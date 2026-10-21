@@ -136,6 +136,49 @@ brew_prefix() {
     esac
 }
 
+# fail if the Homebrew prefix is not owned or writable by the current user
+# runs in a subshell so its variables do not leak into the caller
+check_brew_permissions() {
+    (
+        prefix=$(brew_prefix 2>/dev/null) || {
+            log_err "could not determine Homebrew prefix"
+            return 1
+        }
+
+        owner=$(stat -f '%Su' "$prefix" 2>/dev/null) || {
+            log_err "could not determine owner of $prefix"
+            return 1
+        }
+
+        current_user=$(id -un)
+
+        if [ "$owner" != "$current_user" ]; then
+            log_err "Homebrew at $prefix is owned by '$owner', not '$current_user'"
+            log_err "Fix Homebrew ownership before running dot"
+            log_err "You can do this via: sudo chown -R $current_user $prefix"
+            return 1
+        fi
+
+        for dir in \
+            "$prefix" \
+            "$prefix/bin" \
+            "$prefix/Cellar" \
+            "$prefix/Caskroom" \
+            "$prefix/etc" \
+            "$prefix/opt" \
+            "$prefix/share" \
+            "$prefix/var/homebrew"
+        do
+            if [ -d "$dir" ] && [ ! -w "$dir" ]; then
+                log_err "Homebrew directory is not writable: $dir"
+                return 1
+            fi
+        done
+
+        return 0
+    )
+}
+
 # magenta when stdout is a terminal, plain text for pipes and logs
 color_magenta=
 color_red=

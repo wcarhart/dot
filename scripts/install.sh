@@ -304,6 +304,10 @@ if ! ensure_brew; then
     exit 1
 fi
 
+if ! check_brew_permissions; then
+    exit 1
+fi
+
 if ! setup_dotrc; then
     exit 1
 fi
@@ -315,7 +319,7 @@ if [ "$skip_brew" -eq 0 ]; then
         brew_ok=1
     else
         log_err "brew bundle failed"
-        failed=1
+        exit 1
     fi
 else
     log_line "skipping brew bundle"
