@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+
+# print the usage for the snag function
+__dot_snag_usage() {
+    cat <<EOF
+snag ~ move recently downloaded files to the current directory
+
+snag [-h] [NUM]
+  -h, --help    show this menu and exit
+  num           the number of files to snag (default: 1)
+EOF
+}
+
+# snag recently downloaded files to the current directory
+snag() {
+    if [[ ${1-} == -h || ${1-} == --help ]]; then
+        __dot_snag_usage
+        return 0
+    fi
+
+    if (( $# > 1 )); then
+        printf 'snag: err: incorrect number of arguments\n' >&2
+        return 1
+    fi
+
+    local num=1
+    if (( $# == 1 )); then
+        if [[ ! $1 =~ ^[0-9]+$ ]]; then
+            printf 'snag: err: argument must be a number\n' >&2
+            return 1
+        fi
+        if ! num=$((10#$1)) 2>/dev/null; then
+            printf 'snag: err: argument must be a positive integer\n' >&2
+            return 1
+        fi
+        if (( num < 1 )); then
+            printf 'snag: err: argument must be a positive integer\n' >&2
+            return 1
+        fi
+    fi
+
+    if [[ ! -d $HOME/Downloads ]]; then
+        printf 'snag: err: no such directory ~/Downloads\n' >&2
+        return 1
+    fi
+
+    local -a files=()
+    local -a mtimes=()
+    local f mt
+    for f in "$HOME/Downloads"/*; do
+        # regular files only - skip directories, symlinks, and non-matching globs
+        [[ -f $f && ! -L $f ]] || continue
+        mt=$(stat -f '%m' "$f" 2>/dev/null) || continue
+        files+=("$f")
+        mtimes+=("$mt")
+    done
+
+    local n=${#files[@]}
+    if (( n == 0 )); then
+        printf 'snag: no files in ~/Downloads\n'
+        return 0
+    fi
+
+    if (( num > n )); then
+        num=$n
+    fi
+
+    local -a order=()
+    local ranked idx
+    local i
+    ranked=$(
+        for ((i = 0; i < n; i++)); do
+            printf '%s\t%s\n' "${mtimes[i]}" "$i"
+        done | LC_ALL=C sort -k1,1nr -k2,2n
+    )
+    while IFS=$'\t' read -r _ idx; do
+        [[ -n $idx ]] || continue
+        order+=("$idx")
+    done <<< "$ranked"
+
+    local failed=0 src name
+    for idx in "${order[@]:0:num}"; do
+        src=${files[idx]-}
+        name=${src##*/}
+        # never move ~/Downloads itself, and never mv an empty or non-file source
+        if [[ -z $src || -z $name || $src == "$HOME/Downloads" || $src == "$HOME/Downloads/" || ! -f $src || -L $src ]]; then
+            printf 'snag: err: skipping unavailable file\n' >&2
+            failed=1
+            continue
+        fi
+        if [[ -e $name || -L $name ]]; then
+            printf 'snag: err: refusing to overwrite %s\n' "$name" >&2
+            failed=1
+            continue
+        fi
+        if ! command mv -n -- "$src" .; then
+            printf 'snag: err: failed to move %s\n' "$name" >&2
+            failed=1
+        fi
+    done
+
+    return "$failed"
+}

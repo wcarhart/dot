@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# print the usage for the random function
+__dot_random_usage() {
+    cat <<EOF
+random ~ generate a random string of specified length
+
+random [-h] [NUM]
+  -h, --help    show this menu and exit
+  num           the length of the generated string (default: 30)
+EOF
+}
+
+# generate a random string of specified length
+random() {
+    if [[ ${1-} == -h || ${1-} == --help ]]; then
+        __dot_random_usage
+        return 0
+    fi
+
+    if (( $# > 1 )); then
+        printf 'random: err: incorrect number of arguments\n' >&2
+        return 1
+    fi
+
+    local len=30
+    if (( $# == 1 )); then
+        if [[ ! $1 =~ ^[0-9]+$ ]]; then
+            printf 'random: err: argument must be a number\n' >&2
+            return 1
+        fi
+        if ! len=$((10#$1)) 2>/dev/null; then
+            printf 'random: err: argument must be a positive integer\n' >&2
+            return 1
+        fi
+        if (( len < 1 )); then
+            printf 'random: err: argument must be a positive integer\n' >&2
+            return 1
+        fi
+    fi
+
+    if ! command -v gshuf >/dev/null 2>&1; then
+        printf 'random: err: coreutils are not installed, use '\''brew install coreutils'\'' first\n' >&2
+        return 1
+    fi
+
+    local output
+    output=$(gshuf -er -n "$len" {A..Z} {a..z} {0..9}) || return 1
+    printf '%s\n' "${output//$'\n'/}"
+}

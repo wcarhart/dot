@@ -1,0 +1,159 @@
+# interactive Bash configuration, managed by dot (see ~/.dotrc)
+# this file must be compatible with macOS /bin/bash 3.2 so it can run before chsh
+
+# non-interactive shells (scp, scripts, ssh commands) return immediately
+case $- in
+    *i*) ;;
+    *) return ;;
+esac
+
+# load dotrc
+if [ -f "$HOME/.dotrc" ]; then
+    # shellcheck disable=SC1090,SC1091
+    . "$HOME/.dotrc"
+fi
+
+# activate mise if it is installed
+if command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate bash)"
+fi
+
+# enable history append and check window size
+shopt -s histappend
+shopt -s checkwinsize
+
+# set history settings
+HISTCONTROL=ignoreboth
+HISTIGNORE='&:ls:ll:la:l.:pwd:exit:clear'
+HISTSIZE=1000000
+HISTFILESIZE=1000000
+
+# set color settings
+export CLICOLOR=1
+export LSCOLORS=dxfxcxdxbxegedabagacad
+export LESS_TERMCAP_mb=$'\e[1;32m'
+export LESS_TERMCAP_md=$'\e[1;32m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;4;31m'
+
+_dot_cache_brew_prefix() {
+    if [ -n "${_DOT_BREW_PREFIX+x}" ]; then
+        return 0
+    fi
+    local brew_bin
+    brew_bin=$(command -v brew 2>/dev/null || true)
+    if [ -z "$brew_bin" ] && [ -x /opt/homebrew/bin/brew ]; then
+        brew_bin=/opt/homebrew/bin/brew
+    fi
+    case $brew_bin in
+        /opt/homebrew/bin/brew)
+            _DOT_BREW_PREFIX=/opt/homebrew
+            ;;
+        /usr/local/bin/brew)
+            _DOT_BREW_PREFIX=/usr/local
+            ;;
+        '')
+            _DOT_BREW_PREFIX=
+            ;;
+        *)
+            _DOT_BREW_PREFIX=$("$brew_bin" --prefix 2>/dev/null || true)
+            ;;
+    esac
+}
+
+_dot_cache_brew_prefix
+
+# load Bash completion if it is installed
+if [ -z "${BASH_COMPLETION_VERSINFO:-}" ] && [ -n "${_DOT_BREW_PREFIX}" ]; then
+    if [ -r "${_DOT_BREW_PREFIX}/etc/profile.d/bash_completion.sh" ]; then
+        # shellcheck disable=SC1091
+        . "${_DOT_BREW_PREFIX}/etc/profile.d/bash_completion.sh"
+    elif [ -r "${_DOT_BREW_PREFIX}/opt/bash-completion@2/etc/profile.d/bash_completion.sh" ]; then
+        # shellcheck disable=SC1091
+        . "${_DOT_BREW_PREFIX}/opt/bash-completion@2/etc/profile.d/bash_completion.sh"
+    fi
+fi
+
+# set Git prompt settings (__git_ps1 reads these after git-prompt.sh is sourced)
+# shellcheck disable=SC2034
+GIT_PS1_SHOWDIRTYSTATE=1
+# shellcheck disable=SC2034
+GIT_PS1_SHOWUNTRACKEDFILES=1
+# shellcheck disable=SC2034
+GIT_PS1_SHOWUPSTREAM=auto
+# shellcheck disable=SC2034
+GIT_PS1_SHOWCOLORHINTS=1
+
+# load Git prompt if it is installed
+if ! declare -F __git_ps1 >/dev/null 2>&1; then
+    _dot_git_prompt=
+    if [ -n "${_DOT_BREW_PREFIX}" ]; then
+        if [ -r "${_DOT_BREW_PREFIX}/etc/bash_completion.d/git-prompt.sh" ]; then
+            _dot_git_prompt="${_DOT_BREW_PREFIX}/etc/bash_completion.d/git-prompt.sh"
+        elif [ -r "${_DOT_BREW_PREFIX}/opt/git/etc/bash_completion.d/git-prompt.sh" ]; then
+            _dot_git_prompt="${_DOT_BREW_PREFIX}/opt/git/etc/bash_completion.d/git-prompt.sh"
+        fi
+    fi
+    if [ -n "${_dot_git_prompt}" ]; then
+        # shellcheck disable=SC1090
+        . "${_dot_git_prompt}"
+    fi
+    unset _dot_git_prompt
+fi
+
+# load aliases if they are defined
+if [ -n "${DOT_DIR:-}" ] && [ -f "$DOT_DIR/shell/aliases.bash" ]; then
+    # shellcheck source=shell/aliases.bash
+    . "$DOT_DIR/shell/aliases.bash"
+fi
+
+# load functions if they are defined
+if [ -n "${DOT_DIR:-}" ] && [ -d "$DOT_DIR/shell/functions" ]; then
+    _dot_had_nullglob=0
+    shopt -q nullglob && _dot_had_nullglob=1
+    shopt -s nullglob
+    for _dot_fn in "$DOT_DIR/shell/functions/"*; do
+        if [ -f "$_dot_fn" ]; then
+            # shellcheck disable=SC1090
+            . "$_dot_fn"
+        fi
+    done
+    if [ "$_dot_had_nullglob" -ne 1 ]; then
+        shopt -u nullglob
+    fi
+    unset _dot_fn _dot_had_nullglob
+fi
+
+# Set default prompt face
+: "${DOT_PROMPT_FACE:=ʕっ•ᴥ•ʔっ}"
+
+# custom prompt function
+_dot_prompt() {
+    if [ -n "${__PS1__:-}" ]; then
+        PS1="$__PS1__"
+        return
+    fi
+    local pre post
+    pre='\[\033[0m\][\A]'
+    post=" \[\033[0m\]\W \[\033[35m\]${DOT_PROMPT_FACE}\[\033[0m\] "
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post"
+    else
+        PS1="${pre}${post}"
+    fi
+}
+
+# Prepend once so Ghostty and other hooks on PROMPT_COMMAND still run.
+case ";${PROMPT_COMMAND:-};" in
+    *';_dot_prompt;'*) ;;
+    *)
+        if [ -n "${PROMPT_COMMAND:-}" ]; then
+            PROMPT_COMMAND="_dot_prompt;${PROMPT_COMMAND}"
+        else
+            PROMPT_COMMAND=_dot_prompt
+        fi
+        ;;
+esac

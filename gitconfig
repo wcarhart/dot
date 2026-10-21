@@ -1,0 +1,46 @@
+[init]
+	defaultBranch = main
+
+[user]
+	email = carhartwill@gmail.com
+	name = Will Carhart
+
+[alias]
+	# print all aliases
+	alias = ! git config --get-regexp ^alias\\. | sed -e s/^alias\\.// -e s/\\ /\\ =\\ /
+
+	# helpful shortcuts
+	a = !git add . && git status
+	b = branch
+	c = commit
+	ca = commit --amend
+	cb = checkout -b
+	ch = checkout
+	cm = commit -m
+	d = diff
+	l = log --graph --all --pretty=format:'%C(yellow)%h%C(cyan)%d%Creset %s %C(white)- %an, %ar%Creset'
+	last = log -1 HEAD
+	master = checkout master
+	main = checkout main
+	s = status
+	unstage = restore --staged -- .
+
+	# custom tools
+	## see who's committed the most to a repo
+	leaderboard = shortlog -sn --all --no-merges
+	## see all my commits in a repo
+	recap = !git log --all --oneline --no-merges --author=`git config user.email`
+	## see all my commits in a repo today
+	today = !git log --since=00:00:00 --all --no-merges --oneline --author=`git config user.email`
+	## get the top file in the list of modified files
+	top = !git diff --name-only | head -n 1
+	## get the bottom file in the list of modified files
+	bottom = !git diff --name-only | tail -n 1
+	## graph complex logs
+	graph = log --graph --all --decorate --stat --date=iso
+	## undo the last commit
+	undo = reset HEAD~1 --mixed
+	## remove local branches that do not exist in the remote
+	tidy = "!f() { git fetch ; git branch --merged "${1:-main}" | grep -v " ${1:-main}$" | xargs git branch -d; }; f"
+	## get the default branch
+	default = "!f() { git remote show \"${1:-origin}\" | grep \"HEAD branch\" | cut -d \":\" -f 2; }; f"

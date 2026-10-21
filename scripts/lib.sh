@@ -1,0 +1,174 @@
+#!/bin/sh
+# shared helpers for scripts
+
+# get the physical path of a directory
+phys_path() {
+    # shellcheck disable=SC1007
+    CDPATH= cd -- "$1" && pwd -P
+}
+
+# shorten a path under $HOME to ~
+display_path() {
+    p=$1
+    home=${HOME-}
+    if [ -n "$home" ]; then
+        case $p in
+            "$home")
+                printf '%s\n' '~'
+                return
+                ;;
+            "$home"/*)
+                # shellcheck disable=SC2088
+                printf '~/%s\n' "${p#"$home"/}"
+                return
+                ;;
+        esac
+    fi
+    printf '%s\n' "$p"
+}
+
+# trim whitespace from the beginning and end of a line
+trim_line() {
+    printf '%s' "$1" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+# determine if a line is a manifest entry
+manifest_skip() {
+    case "$1" in
+        ''|'#'*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# directory name for a remote URL
+repo_name() {
+    url=$1
+    url=${url%/}
+    case $url in
+        *.git) url=${url%.git} ;;
+    esac
+    url=${url%/}
+    case $url in
+        *://*)
+            name=${url##*/}
+            ;;
+        *:*)
+            rest=${url#*:}
+            name=${rest##*/}
+            ;;
+        *)
+            name=${url##*/}
+            ;;
+    esac
+    case $name in
+        ''|'.'|'..'|-*|*'/'*)
+            return 1
+            ;;
+    esac
+    case $name in
+        *[!A-Za-z0-9._+-]*)
+            return 1
+            ;;
+    esac
+    printf '%s\n' "$name"
+}
+
+# determine if a directory is the root of a git repository
+is_repo_root() {
+    dir=$1
+    top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 1
+    top_phys=$(phys_path "$top") || return 1
+    dir_phys=$(phys_path "$dir") || return 1
+    [ "$top_phys" = "$dir_phys" ]
+}
+
+# Read ~/.dotrc into cfg_dot and cfg_code
+# 0  DOT_DIR is set (CODE_DIR may be empty)
+# 1  file is missing
+# 2  file cannot be sourced
+# 3  file sourced, but DOT_DIR is empty (cfg_code is still set)
+read_dotrc() {
+    cfg_dot=
+    cfg_code=
+    if [ ! -f "$HOME/.dotrc" ] && [ ! -L "$HOME/.dotrc" ]; then
+        return 1
+    fi
+    dotrc_out=$(
+        set +e
+        set +u
+        # shellcheck disable=SC1090,SC1091
+        . "$HOME/.dotrc" || exit 1
+        printf 'DOT=%s\n' "${DOT_DIR-}"
+        printf 'CODE=%s\n' "${CODE_DIR-}"
+    ) || return 2
+    cfg_dot=$(printf '%s\n' "$dotrc_out" | sed -n 's/^DOT=//p' | head -n 1)
+    # shellcheck disable=SC2034
+    cfg_code=$(printf '%s\n' "$dotrc_out" | sed -n 's/^CODE=//p' | head -n 1)
+    [ -n "$cfg_dot" ] || return 3
+    return 0
+}
+
+# get the path to the brew binary
+brew_bin() {
+    bin=$(command -v brew 2>/dev/null || true)
+    if [ -z "$bin" ] && [ -x /opt/homebrew/bin/brew ]; then
+        bin=/opt/homebrew/bin/brew
+    fi
+    if [ -z "$bin" ]; then
+        return 1
+    fi
+    printf '%s\n' "$bin"
+}
+
+# get the prefix of the brew binary
+brew_prefix() {
+    bin=$(brew_bin) || return 1
+    case $bin in
+        /opt/homebrew/bin/brew)
+            printf '%s\n' /opt/homebrew
+            ;;
+        /usr/local/bin/brew)
+            printf '%s\n' /usr/local
+            ;;
+        *)
+            "$bin" --prefix
+            ;;
+    esac
+}
+
+# magenta when stdout is a terminal, plain text for pipes and logs
+color_magenta=
+color_red=
+color_yellow=
+color_reset=
+if [ -t 1 ]; then
+    color_magenta=$(printf '\033[35m')
+    color_red=$(printf '\033[31m')
+    color_yellow=$(printf '\033[33m')
+    color_reset=$(printf '\033[0m')
+fi
+
+# log a step in the installation process
+log_step() {
+    printf '%s• %s •%s\n' "$color_magenta" "$1" "$color_reset"
+}
+
+# log a line to stdout
+log_line() {
+    printf '  %s\n' "$*"
+}
+
+# log an error to stderr
+log_err() {
+    printf '  %s %s\n' "${color_red}error${color_reset}:" "$*" >&2
+}
+
+# log a warning to stderr
+log_warn() {
+    printf '  %s %s\n' "${color_yellow}warn${color_reset}:" "$*" >&2
+}
+
+# log a cloning step
+log_cloning() {
+    printf '  Cloning %s%s%s...\n' "$color_magenta" "$1" "$color_reset"
+}

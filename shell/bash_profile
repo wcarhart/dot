@@ -1,0 +1,37 @@
+# login-shell startup profile, managed by dot (see ~/.dotrc)
+# this file must be compatible with macOS /bin/bash 3.2 so it can run before chsh
+
+if [ -f "$HOME/.dotrc" ]; then
+    # shellcheck disable=SC1090,SC1091
+    . "$HOME/.dotrc"
+fi
+
+# brew shellenv prepends Homebrew and keeps the existing PATH
+if command -v brew >/dev/null 2>&1; then
+    eval "$(brew shellenv)"
+elif [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
+
+# check if Bash is 5.2 or newer
+dot_bash_ready=0
+if [ -n "${BASH_VERSINFO+x}" ]; then
+    if [ "${BASH_VERSINFO[0]}" -gt 5 ]; then
+        dot_bash_ready=1
+    elif [ "${BASH_VERSINFO[0]}" -eq 5 ] && [ "${BASH_VERSINFO[1]}" -ge 2 ]; then
+        dot_bash_ready=1
+    fi
+fi
+
+# run interactive config if the shell is interactive
+case $- in
+    *i*)
+        if [ "$dot_bash_ready" -eq 1 ] && [ -f "$HOME/.bashrc" ]; then
+            # shellcheck disable=SC1090,SC1091
+            . "$HOME/.bashrc"
+        elif [ "$dot_bash_ready" -ne 1 ]; then
+            printf '%s\n' 'dot: interactive config needs Bash 5.2 or newer' >&2
+            printf '%s\n' 'dot: add Homebrew Bash to /etc/shells and run chsh' >&2
+        fi
+        ;;
+esac

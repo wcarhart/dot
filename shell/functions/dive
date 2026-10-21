@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+# print the usage for the dive function
+__dot_dive_usage() {
+    cat <<EOF
+dive ~ follow a directory tree down to its childmost subdirectory
+
+dive [-h] DIRECTORY
+  -h, --help    show this menu and exit
+  directory     the directory into which to dive
+EOF
+}
+
+# follow a directory tree down to its childmost directory
+dive() {
+    if [[ ${1-} == -h || ${1-} == --help ]]; then
+        __dot_dive_usage
+        return 0
+    fi
+
+    if (( $# != 1 )); then
+        printf 'dive: err: incorrect number of arguments\n' >&2
+        return 1
+    fi
+
+    if [[ ! -d $1 ]]; then
+        printf 'dive: err: no such directory '\''%s'\''\n' "$1" >&2
+        return 1
+    fi
+
+    local target
+    if ! target=$(cd -- "$1" 2>/dev/null && printf '%s\n' "$PWD"); then
+        printf 'dive: err: cannot enter '\''%s'\''\n' "$1" >&2
+        return 1
+    fi
+
+    local phys thing child
+    local -a seen=()
+    local count seen_i seen_hit
+    while true; do
+        if ! phys=$(cd -P -- "$target" 2>/dev/null && printf '%s\n' "$PWD"); then
+            printf 'dive: err: cannot enter '\''%s'\''\n' "$target" >&2
+            return 1
+        fi
+
+        seen_hit=0
+        for ((seen_i = 0; seen_i < ${#seen[@]}; seen_i++)); do
+            if [[ ${seen[seen_i]} == "$phys" ]]; then
+                seen_hit=1
+                break
+            fi
+        done
+        if (( seen_hit )); then
+            break
+        fi
+        seen+=("$phys")
+
+        count=0
+        child=
+        for thing in "$target"/*; do
+            # -d is false for the unmatched glob and for non-directories
+            [[ -d $thing ]] || continue
+            child=$thing
+            count=$((count + 1))
+            if (( count > 1 )); then
+                break
+            fi
+        done
+
+        if (( count == 1 )); then
+            target=$child
+        else
+            break
+        fi
+    done
+
+    if ! cd -- "$target" 2>/dev/null; then
+        printf 'dive: err: cannot enter '\''%s'\''\n' "$target" >&2
+        return 1
+    fi
+    printf '%s\n' "$PWD"
+}

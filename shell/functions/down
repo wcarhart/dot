@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+# print the usage for the down function
+__dot_down_usage() {
+    cat <<EOF
+down ~ go down a directory
+
+down [-h] [NUM]
+  -h, --help    show this menu and exit
+  num           the number of directories to go down (default: 1)
+EOF
+}
+
+# go down a directory
+down() {
+    if [[ ${1-} == -h || ${1-} == --help ]]; then
+        __dot_down_usage
+        return 0
+    fi
+
+    if (( $# > 1 )); then
+        printf 'down: err: incorrect number of arguments\n' >&2
+        return 1
+    fi
+
+    local levels=1
+    if (( $# == 1 )); then
+        if [[ ! $1 =~ ^[0-9]+$ ]]; then
+            printf 'down: err: argument must be a number\n' >&2
+            return 1
+        fi
+        if ! levels=$((10#$1)) 2>/dev/null; then
+            printf 'down: err: argument must be a positive integer\n' >&2
+            return 1
+        fi
+        if (( levels < 1 )); then
+            printf 'down: err: argument must be a positive integer\n' >&2
+            return 1
+        fi
+    fi
+
+    export -n __UPDIR__
+
+    if [[ -z ${__UPDIR__-} ]]; then
+        printf '%s\n' "$PWD"
+        return 0
+    fi
+
+    local dest=$PWD
+    local i rest component next
+    for ((i = 0; i < levels; i++)); do
+        if [[ $dest == "$__UPDIR__" ]]; then
+            break
+        fi
+
+        rest=
+        if [[ $dest == / ]]; then
+            rest=${__UPDIR__#/}
+        else
+            case $__UPDIR__ in
+                "$dest"/*)
+                    rest=${__UPDIR__#"$dest"/}
+                    ;;
+            esac
+        fi
+
+        # either not on the remembered path, or there is no further component
+        if [[ -z $rest ]]; then
+            break
+        fi
+        component=${rest%%/*}
+        if [[ -z $component || $component == . || $component == .. ]]; then
+            break
+        fi
+        if [[ $dest == / ]]; then
+            next=/$component
+        else
+            next=$dest/$component
+        fi
+        if [[ ! -d $next ]]; then
+            break
+        fi
+        dest=$next
+    done
+
+    if ! cd -- "$dest" 2>/dev/null; then
+        printf 'down: err: cannot change directory\n' >&2
+        return 1
+    fi
+    printf '%s\n' "$PWD"
+}

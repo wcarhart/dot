@@ -1,0 +1,12 @@
+# Git remotes to clone into CODE_DIR (per ~/.dotrc)
+git@github.com:wcarhart/babydog.git
+git@github.com:wcarhart/buttermilk.git
+git@github.com:wcarhart/dot.git
+git@github.com:wcarhart/ethos.git
+git@github.com:wcarhart/fox.git
+git@github.com:wcarhart/gridwave.git
+git@github.com:wcarhart/home.git
+git@github.com:wcarhart/koi.git
+git@github.com:wcarhart/loopset.git
+git@github.com:wcarhart/miko.git
+git@github.com:wcarhart/wcarhart.git

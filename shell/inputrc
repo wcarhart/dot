@@ -1,0 +1,14 @@
+# use Emacs-style keyboard shortcuts for cursor movement
+set editing-mode emacs
+
+# enable case insensitive tab completion
+set completion-ignore-case on
+
+# don't require second tab for listing ambiguous tab completion candidates
+set show-all-if-ambiguous on
+
+# make arrow keys work with partial history prefix matching
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+"\eOA": history-search-backward
+"\eOB": history-search-forward
