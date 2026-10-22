@@ -397,6 +397,7 @@ fail_install() {
 
 require_script "$DOT_DIR/scripts/clone.sh"
 require_script "$DOT_DIR/scripts/doctor.sh"
+require_script "$DOT_DIR/scripts/macos.sh"
 
 trap finish_install_step EXIT
 
@@ -414,10 +415,13 @@ else
         "$(pipeline_step doctor)"
 fi
 
+log_step doctor
 if ! "$DOT_DIR/scripts/doctor.sh" --preflight; then
+    log_step_done
     log_err "preflight checks failed"
     exit 1
 fi
+log_step_done
 
 log_step install
 install_step_open=1
@@ -432,6 +436,10 @@ fi
 
 if ! setup_dotrc; then
     fail_install
+fi
+
+if ! "$DOT_DIR/scripts/macos.sh"; then
+    failed=1
 fi
 
 brew_ok=0
@@ -485,14 +493,18 @@ fi
 finish_install_step
 
 if [ "$skip_repos" -eq 0 ]; then
+    log_step clone
     if ! "$DOT_DIR/scripts/clone.sh"; then
         repos_failed=1
     fi
+    log_step_done
 fi
 
+log_step doctor
 if ! "$DOT_DIR/scripts/doctor.sh"; then
     failed=1
 fi
+log_step_done
 
 if [ "$failed" -ne 0 ]; then
     printf '%s%s%s\n\n' "$color_red" "Dot installation failed" "$color_reset"
@@ -506,6 +518,8 @@ else
     print_logo
     exit_code=0
 fi
+
+printf '%s\n\n' "Use ${color_magenta}dot --help${color_reset} to get started"
 
 if [ -n "$BACKUP_DIR" ]; then
     printf '%s\n' "Backups: $BACKUP_DIR"

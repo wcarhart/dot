@@ -63,11 +63,9 @@ finish_clone() {
     if [ "$rc" -ne 0 ]; then
         log_err "repository provisioning was not successful"
     fi
-    log_step_done
     exit "$rc"
 }
 
-log_step clone
 trap finish_clone EXIT
 
 # validate installation

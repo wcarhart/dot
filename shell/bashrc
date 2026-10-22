@@ -39,6 +39,7 @@ export LESS_TERMCAP_so=$'\e[01;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
+# this is used to set the brew prefix for the dot prompt
 _dot_cache_brew_prefix() {
     if [ -n "${_DOT_BREW_PREFIX+x}" ]; then
         return 0
@@ -77,8 +78,9 @@ if [ -z "${BASH_COMPLETION_VERSINFO:-}" ] && [ -n "${_DOT_BREW_PREFIX}" ]; then
     fi
 fi
 
-# __git_ps1 treats any nonempty value as enabled. Unset these so it prints
-# only the branch name; _dot_prompt applies clean/dirty color itself.
+# __git_ps1 treats any nonempty value as enabled, we leave these unset so
+# we only get the branch name in the Git PS1 - _dot_prompt below applies
+# the red/green clean/dirty color itself
 unset GIT_PS1_SHOWDIRTYSTATE
 unset GIT_PS1_SHOWUNTRACKEDFILES
 unset GIT_PS1_SHOWUPSTREAM
@@ -124,13 +126,13 @@ if [ -n "${DOT_DIR:-}" ] && [ -d "$DOT_DIR/shell/functions" ]; then
     unset _dot_fn _dot_had_nullglob
 fi
 
-# Set default prompt face
+# set default prompt face
 : "${DOT_PROMPT_FACE:=ʕっ•ᴥ•ʔっ}"
 
 # custom prompt function
 _dot_prompt() {
-    # git status would clobber $? before later PROMPT_COMMAND hooks see it.
-    # __git_ps1 previously preserved that status itself.
+    # git status would clobber $? before later PROMPT_COMMAND hooks see it,
+    # __git_ps1 previously preserved that status itself
     local prompt_status=$?
     if [ -n "${__PS1__:-}" ]; then
         PS1="$__PS1__"
@@ -151,7 +153,7 @@ _dot_prompt() {
     return "$prompt_status"
 }
 
-# Prepend once so Ghostty and other hooks on PROMPT_COMMAND still run.
+# prepend once so Ghostty and other hooks on PROMPT_COMMAND still run
 case ";${PROMPT_COMMAND:-};" in
     *';_dot_prompt;'*) ;;
     *)

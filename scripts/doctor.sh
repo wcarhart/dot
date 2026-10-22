@@ -49,9 +49,6 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
-log_step doctor
-trap 'log_step_done' EXIT
-
 check_platform() {
     os=$(uname -s 2>/dev/null || true)
     if [ "$os" != "Darwin" ]; then
@@ -112,6 +109,14 @@ else
     else
         fail "dot directory $cfg_phys"
     fi
+fi
+
+if [ -n "$cfg_dot" ] && [ -f "$cfg_dot/shell/functions/dot" ] && \
+    DOT_DIR="$cfg_dot" /bin/bash -c '. "$DOT_DIR/shell/functions/dot" && dot --help >/dev/null 2>&1'
+then
+    pass "dot"
+else
+    fail "dot"
 fi
 
 if [ -z "$cfg_code" ]; then

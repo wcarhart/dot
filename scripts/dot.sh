@@ -18,9 +18,7 @@ Commands:
   repo       Manage dot tracked repositories
   doctor     Validate the current dot installation
   install    Install or update dot
-  commit     Commit changes in the dot checkout
-  push       Push the dot checkout
-  pull       Pull the dot checkout
+  git        Run git in the dot checkout
 
 Options:
   -h, --help    Show this help message and exit
@@ -118,39 +116,15 @@ Options:
 EOF
 }
 
-usage_commit() {
+usage_git() {
     cat <<'EOF'
-Usage: dot commit [-h] [ARGS...]
+Usage: dot git [-h] [ARGS...]
 
-Run 'git commit' in the dot checkout.
+Run git in the dot checkout.
 
 Options:
   -h, --help    Show this help message and exit
-  ARGS          Passed through to 'git commit'
-EOF
-}
-
-usage_push() {
-    cat <<'EOF'
-Usage: dot push [-h] [ARGS...]
-
-Run 'git push' in the dot checkout.
-
-Options:
-  -h, --help    Show this help message and exit
-  ARGS          Passed through to 'git push'
-EOF
-}
-
-usage_pull() {
-    cat <<'EOF'
-Usage: dot pull [-h] [ARGS...]
-
-Run 'git pull' in the dot checkout.
-
-Options:
-  -h, --help    Show this help message and exit
-  ARGS          Passed through to 'git pull'
+  [ARGS...]     Passed through to git
 EOF
 }
 
@@ -440,21 +414,18 @@ cmd_install() {
 }
 
 cmd_git() {
-    sub=$1
-    shift
-    if [ "$#" -eq 1 ]; then
-        case $1 in
-            -h|--help)
-                case $sub in
-                    commit) usage_commit ;;
-                    push) usage_push ;;
-                    pull) usage_pull ;;
-                esac
-                exit 0
-                ;;
-        esac
+    if [ "$#" -eq 0 ]; then
+        usage_git
+        exit 0
     fi
-    exec git -C "$DOT_DIR" "$sub" "$@"
+    case $1 in
+        -h|--help)
+            usage_git
+            exit 0
+            ;;
+    esac
+    cd "$DOT_DIR" || exit 1
+    exec git "$@"
 }
 
 if [ "$#" -eq 0 ]; then
@@ -483,17 +454,9 @@ case $1 in
         shift
         cmd_install "$@"
         ;;
-    commit)
+    git)
         shift
-        cmd_git commit "$@"
-        ;;
-    push)
-        shift
-        cmd_git push "$@"
-        ;;
-    pull)
-        shift
-        cmd_git pull "$@"
+        cmd_git "$@"
         ;;
     *)
         printf '%s\n' "dot: unknown command: $1" >&2
