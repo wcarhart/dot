@@ -25,4 +25,6 @@ exec '/opt/homebrew/bin/bash' -l # or just open a new terminal
 Installation is idempotent and will not overwrite existing configurations unless `--force` is provided. When overwritten, a backup of the existing configuration is saved to `~/.dot-backups/`.
 
 # Usage
+Once installed, you can interact with dot via `dot`. See `dot --help` to get started.
+
 See `shell/functions/` for the latest custom functions, all of which support `--help`. See `bashrc` for the repo entrypoint once installed.

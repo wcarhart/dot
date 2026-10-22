@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# manage the dot checkout from any directory
+dot() {
+    if [[ -z ${DOT_DIR-} ]]; then
+        printf 'dot: err: DOT_DIR is not set\n' >&2
+        return 1
+    fi
+    "$DOT_DIR/scripts/dot.sh" "$@"
+}
