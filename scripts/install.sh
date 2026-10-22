@@ -352,6 +352,7 @@ __/\\\\\\\\\\\\__________/\\\\\_______/\\\\\\\\\\\\\\\_
       _\/\\\_______/\\\___\///\\\__/\\\__________\/\\\_______  
        _\/\\\\\\\\\\\\/______\///\\\\\/___________\/\\\_______ 
         _\////////////__________\/////_____________\///________
+
 EOF
 }
 
@@ -367,7 +368,7 @@ print_shell_hint() {
     fi
 
     quoted=$(shell_quote "$bash_path")
-    printf '\n%s%s%s\n' "$color_red" "⚠ Your login shell is not Homebrew Bash ⚠" "$color_reset"
+    printf '%s%s%s\n' "$color_red" "⚠ Your login shell is not Homebrew Bash ⚠" "$color_reset"
     printf '%s\n%s\n\n' "Do not skip this step, dot is not operational until you update" "your login shell to Homebrew Bash."
     printf '%s\n' "To use Homebrew Bash as your login shell, run:"
     if ! grep -Fxq "$bash_path" /etc/shells 2>/dev/null; then
