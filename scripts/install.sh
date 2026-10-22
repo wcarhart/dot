@@ -13,6 +13,8 @@ skip_brew=0
 skip_repos=0
 skip_mise=0
 failed=0
+repos_failed=0
+install_step_open=0
 BACKUP_DIR=
 
 usage() {
@@ -278,48 +280,77 @@ print_shell_hint() {
     quoted=$(shell_quote "$bash_path")
     printf '\n%s\n' "To use Homebrew Bash as your login shell, run:"
     if ! grep -Fxq "$bash_path" /etc/shells 2>/dev/null; then
-        printf '  %s\n' "echo $quoted | sudo tee -a /etc/shells"
+        printf '  %s%s%s\n' "$color_magenta" "echo $quoted | sudo tee -a /etc/shells" "$color_reset"
     fi
-    printf '  %s\n' "chsh -s $quoted"
-    printf '%s\n' "Then open a new terminal, or run: exec $quoted -l"
+    printf '  %s%s%s\n' "$color_magenta" "chsh -s $quoted" "$color_reset"
+    printf 'Then open a new terminal, or run: %s%s%s\n' "$color_magenta" "exec $quoted -l" "$color_reset"
+}
+
+pipeline_step() {
+    printf '%s%s%s' "$color_magenta" "$1" "$color_reset"
+}
+
+finish_install_step() {
+    if [ "$install_step_open" -eq 1 ]; then
+        install_step_open=0
+        log_step_done
+    fi
+}
+
+fail_install() {
+    finish_install_step
+    printf '%s%s%s\n' "$color_red" "Dot installation failed" "$color_reset"
+    exit 1
 }
 
 require_script "$DOT_DIR/scripts/clone.sh"
 require_script "$DOT_DIR/scripts/doctor.sh"
 
-printf '%s\n' '••• Welcome to DOT •••'
+trap finish_install_step EXIT
+
+printf '%s%s%s\n' "$color_magenta" '••• WELCOME TO DOT •••' "$color_reset"
 if [ "$skip_repos" -eq 0 ]; then
-    printf '%s\n' 'Running install pipeline: doctor, install, clone, doctor'
+    printf 'Running install pipeline: %s > %s > %s > %s\n' \
+        "$(pipeline_step doctor)" \
+        "$(pipeline_step install)" \
+        "$(pipeline_step clone)" \
+        "$(pipeline_step doctor)"
 else
-    printf '%s\n' 'Running install pipeline: doctor, install, doctor'
+    printf 'Running install pipeline: %s > %s > %s\n' \
+        "$(pipeline_step doctor)" \
+        "$(pipeline_step install)" \
+        "$(pipeline_step doctor)"
 fi
 
-log_step install
 if ! "$DOT_DIR/scripts/doctor.sh" --preflight; then
     log_err "preflight checks failed"
     exit 1
 fi
 
+log_step install
+install_step_open=1
+
 if ! ensure_brew; then
-    exit 1
+    fail_install
 fi
 
 if ! check_brew_permissions; then
-    exit 1
+    fail_install
 fi
 
 if ! setup_dotrc; then
-    exit 1
+    fail_install
 fi
 
 brew_ok=0
 if [ "$skip_brew" -eq 0 ]; then
+    log_line "This can take up to 15m, please be patient..."
     log_line "brew bundle --file=$DOT_DIR/Brewfile"
     if brew bundle --file="$DOT_DIR/Brewfile"; then
         brew_ok=1
     else
         log_err "brew bundle failed"
-        exit 1
+        fail_install
     fi
 else
     log_line "skipping brew bundle"
@@ -354,24 +385,33 @@ else
     fi
 fi
 
+if [ "$skip_repos" -eq 1 ]; then
+    log_line "skipping repository clones"
+fi
+finish_install_step
+
 if [ "$skip_repos" -eq 0 ]; then
     if ! "$DOT_DIR/scripts/clone.sh"; then
-        log_err "repository provisioning failed"
-        failed=1
+        log_err "repository provisioning was not successful"
+        repos_failed=1
     fi
-else
-    log_line "skipping repository clones"
 fi
 
 if ! "$DOT_DIR/scripts/doctor.sh"; then
     failed=1
 fi
 
-if [ "$failed" -eq 0 ]; then
-    printf '%s\n' "Dot installation complete"
+if [ "$failed" -ne 0 ]; then
+    printf '%s%s%s\n' "$color_red" "Dot installation failed" "$color_reset"
+    exit_code=1
+elif [ "$repos_failed" -ne 0 ]; then
+    printf '%s%s%s\n' "$color_yellow" "Dot installation completed with some issues" "$color_reset"
     print_logo
+    exit_code=1
 else
-    printf '%s\n' "Dot installation failed"
+    printf '%s%s%s\n' "$color_green" "Dot installation successful" "$color_reset"
+    print_logo
+    exit_code=0
 fi
 
 if [ -n "$BACKUP_DIR" ]; then
@@ -380,4 +420,4 @@ fi
 
 print_shell_hint
 
-exit "$failed"
+exit "$exit_code"

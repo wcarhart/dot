@@ -179,21 +179,51 @@ check_brew_permissions() {
     )
 }
 
-# magenta when stdout is a terminal, plain text for pipes and logs
+# colors when stdout is a terminal, plain text for pipes and logs
 color_magenta=
 color_red=
 color_yellow=
+color_green=
 color_reset=
 if [ -t 1 ]; then
     color_magenta=$(printf '\033[35m')
     color_red=$(printf '\033[31m')
     color_yellow=$(printf '\033[33m')
+    # shellcheck disable=SC2034 # read by scripts that source this file
+    color_green=$(printf '\033[32m')
     color_reset=$(printf '\033[0m')
 fi
 
+step_label=
+step_started_at=
+
+# format an elapsed time in seconds as "59s", "2m", or "4m 23s"
+format_elapsed() {
+    elapsed=$1
+    mins=$((elapsed / 60))
+    secs=$((elapsed % 60))
+    if [ "$mins" -eq 0 ]; then
+        printf '%ss' "$secs"
+    elif [ "$secs" -eq 0 ]; then
+        printf '%sm' "$mins"
+    else
+        printf '%sm %ss' "$mins" "$secs"
+    fi
+}
+
 # log a step in the installation process
 log_step() {
-    printf '%s• %s •%s\n' "$color_magenta" "$1" "$color_reset"
+    step_label=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+    step_started_at=$(date +%s)
+    printf '%s• %s •%s\n' "$color_magenta" "$step_label" "$color_reset"
+}
+
+# log how long the current step took
+log_step_done() {
+    now=$(date +%s)
+    elapsed=$((now - step_started_at))
+    dur=$(format_elapsed "$elapsed")
+    printf '%s• %s complete in %s •%s\n' "$color_magenta" "$step_label" "$dur" "$color_reset"
 }
 
 # log a line to stdout

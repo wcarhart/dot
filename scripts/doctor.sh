@@ -14,9 +14,9 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 status=0
 preflight_only=0
 
-pass() { log_line "PASS  $*"; }
-warn() { log_line "WARN  $*"; }
-fail() { log_line "FAIL  $*"; status=1; }
+pass() { log_line "${color_green}PASS${color_reset}  $*"; }
+warn() { log_line "${color_yellow}WARN${color_reset}  $*"; }
+fail() { log_line "${color_red}FAIL${color_reset}  $*"; status=1; }
 
 usage() {
     cat <<'EOF'
@@ -50,6 +50,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 log_step doctor
+trap 'log_step_done' EXIT
 
 check_platform() {
     os=$(uname -s 2>/dev/null || true)

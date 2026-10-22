@@ -57,6 +57,7 @@ print_repo_hint() {
 }
 
 log_step clone
+trap 'log_step_done' EXIT
 
 # validate installation
 if [ -z "${HOME:-}" ] || [ ! -d "$HOME" ]; then
@@ -198,5 +199,7 @@ while [ -n "$rest" ]; do
     fi
 done
 
-print_repo_hint
+if [ "$failed" -eq 0 ]; then
+    print_repo_hint
+fi
 exit "$failed"
