@@ -27,6 +27,11 @@ display_path() {
     printf '%s\n' "$p"
 }
 
+# sublime text 4 user data directory on macos
+sublime_support_dir() {
+    printf '%s\n' "$HOME/Library/Application Support/Sublime Text"
+}
+
 # trim whitespace from the beginning and end of a line
 trim_line() {
     printf '%s' "$1" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'

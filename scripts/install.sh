@@ -162,6 +162,8 @@ setup_dotrc() {
 link_one() {
     src=$1
     dest=$2
+    # 1 backs up and replaces a mismatched path, the default leaves it in place
+    replace=${3:-0}
 
     if [ ! -f "$src" ]; then
         log_err "missing $src"
@@ -187,7 +189,7 @@ link_one() {
         return 0
     fi
 
-    if [ "$force" -ne 1 ]; then
+    if [ "$force" -ne 1 ] && [ "$replace" -ne 1 ]; then
         log_err "$dest already exists (use -f to replace)"
         failed=1
         return 0
@@ -210,6 +212,93 @@ link_one() {
         return 0
     fi
     log_line "backed up $dest to $BACKUP_DIR/$base"
+}
+
+# downloads the Sublime Package Control package to the given destination
+download_package_control() {
+    dest=$1
+    url='https://download.sublimetext.com/Package%20Control.sublime-package'
+    dest_dir=$(dirname -- "$dest")
+
+    if ! command -v curl >/dev/null 2>&1; then
+        log_err "curl is not available"
+        return 1
+    fi
+
+    if ! tmp=$(mktemp "$dest_dir/Package Control.sublime-package.XXXXXX"); then
+        log_err "could not create a temporary file in $dest_dir"
+        return 1
+    fi
+
+    if ! curl -q -fsSL -o "$tmp" "$url"; then
+        rm -f -- "$tmp"
+        log_err "could not download Package Control"
+        return 1
+    fi
+
+    # sublime-package files are zip archives
+    magic=$(dd if="$tmp" bs=2 count=1 2>/dev/null || true)
+    if [ ! -s "$tmp" ] || [ "$magic" != "PK" ]; then
+        rm -f -- "$tmp"
+        log_err "could not download Package Control"
+        return 1
+    fi
+
+    if ! mv -- "$tmp" "$dest"; then
+        rm -f -- "$tmp"
+        log_err "could not install $dest"
+        return 1
+    fi
+}
+
+# installs the Sublime Package Control package to the given destination
+install_package_control() {
+    package_path=$1
+
+    if [ -f "$package_path" ]; then
+        log_line "ok $package_path"
+        return 0
+    fi
+
+    if [ -e "$package_path" ] || [ -L "$package_path" ]; then
+        if ! ensure_backup_dir; then
+            log_err "could not create a backup directory"
+            return 1
+        fi
+        base=$(basename -- "$package_path")
+        if ! mv -- "$package_path" "$BACKUP_DIR/$base"; then
+            log_err "could not back up $package_path"
+            return 1
+        fi
+        log_line "backed up $package_path to $BACKUP_DIR/$base"
+    fi
+
+    if ! download_package_control "$package_path"; then
+        return 1
+    fi
+    log_line "installed $package_path"
+}
+
+# sets up Sublime Text
+setup_sublime() {
+    dot_dir=$1
+    support=$(sublime_support_dir)
+    installed_dir="$support/Installed Packages"
+    user_dir="$support/Packages/User"
+
+    if ! mkdir -p -- "$installed_dir" "$user_dir"; then
+        log_err "could not create $support"
+        failed=1
+        return 0
+    fi
+
+    if ! install_package_control "$installed_dir/Package Control.sublime-package"; then
+        failed=1
+    fi
+
+    # 1 backs up conflicting settings without requiring -f, correct symlink is left alone so Package Control can write through it
+    link_one "$dot_dir/sublime/Preferences.sublime-settings" "$user_dir/Preferences.sublime-settings" 1
+    link_one "$dot_dir/sublime/Package Control.sublime-settings" "$user_dir/Package Control.sublime-settings" 1
 }
 
 use_brew_shellenv() {
@@ -355,6 +444,8 @@ if [ "$skip_brew" -eq 0 ]; then
 else
     log_line "skipping brew bundle"
 fi
+
+setup_sublime "$DOT_DIR"
 
 link_one "$DOT_DIR/shell/bashrc" "$HOME/.bashrc"
 link_one "$DOT_DIR/shell/bash_profile" "$HOME/.bash_profile"

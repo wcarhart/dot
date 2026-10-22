@@ -161,6 +161,19 @@ check_link "mise" "$CHECKOUT/mise.toml" "$HOME/.config/mise/config.toml"
 check_link "tmux.conf" "$CHECKOUT/tmux.conf" "$HOME/.tmux.conf"
 check_link "editorconfig" "$CHECKOUT/editorconfig" "$HOME/.editorconfig"
 
+sublime_support=$(sublime_support_dir)
+check_link "sublime preferences" \
+    "$CHECKOUT/sublime/Preferences.sublime-settings" \
+    "$sublime_support/Packages/User/Preferences.sublime-settings"
+check_link "sublime package control" \
+    "$CHECKOUT/sublime/Package Control.sublime-settings" \
+    "$sublime_support/Packages/User/Package Control.sublime-settings"
+if [ -f "$sublime_support/Installed Packages/Package Control.sublime-package" ]; then
+    pass "sublime package-control"
+else
+    fail "sublime package-control"
+fi
+
 if [ -f "$CHECKOUT/shell/inputrc" ]; then
     pass "inputrc"
 else
