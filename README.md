@@ -10,7 +10,7 @@ __/\\\\\\\\\\\\__________/\\\\\_______/\\\\\\\\\\\\\\\_
         _\////////////__________\/////_____________\///________
 ```
 
-Dotfiles and related tools. Specifically designed for Bash 5.2+ on macOS.
+Dotfiles and related tools. Specifically designed for Bash 5.2+ on macOS. Evolved from [konphig](https://github.com/wcarhart/konphig).
 
 # Install
 Clone the repository, then run `install.sh` (_not_ `scripts/install.sh`). Then change your default shell and restart your terminal.
@@ -28,3 +28,7 @@ Installation is idempotent and will not overwrite existing configurations unless
 Once installed, you can interact with dot via `dot`. See `dot --help` to get started.
 
 See `shell/functions/` for the latest custom functions, all of which support `--help`. See `bashrc` for the repo entrypoint once installed.
+
+To have dot manage repositories on your local machine, add them to `repos.txt`. You can configure other local options in `~/.dotrc`, specifically:
+* `DOT_DIR` - the path to the local dot repository
+* `CODE_DIR` - the path to your code parent directory, in which repositories will be cloned and tracked
