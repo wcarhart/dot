@@ -1,5 +1,9 @@
 {
   "installed_packages": [
-    "ayu"
-  ]
+    "ayu",
+    "Package Control",
+  ],
+  "in_process_packages":
+  [
+  ],
 }
