@@ -77,15 +77,12 @@ if [ -z "${BASH_COMPLETION_VERSINFO:-}" ] && [ -n "${_DOT_BREW_PREFIX}" ]; then
     fi
 fi
 
-# set Git prompt settings (__git_ps1 reads these after git-prompt.sh is sourced)
-# shellcheck disable=SC2034
-GIT_PS1_SHOWDIRTYSTATE=1
-# shellcheck disable=SC2034
-GIT_PS1_SHOWUNTRACKEDFILES=1
-# shellcheck disable=SC2034
-GIT_PS1_SHOWUPSTREAM=auto
-# shellcheck disable=SC2034
-GIT_PS1_SHOWCOLORHINTS=1
+# __git_ps1 treats any nonempty value as enabled. Unset these so it prints
+# only the branch name; _dot_prompt applies clean/dirty color itself.
+unset GIT_PS1_SHOWDIRTYSTATE
+unset GIT_PS1_SHOWUNTRACKEDFILES
+unset GIT_PS1_SHOWUPSTREAM
+unset GIT_PS1_SHOWCOLORHINTS
 
 # load Git prompt if it is installed
 if ! declare -F __git_ps1 >/dev/null 2>&1; then
@@ -132,18 +129,26 @@ fi
 
 # custom prompt function
 _dot_prompt() {
+    # git status would clobber $? before later PROMPT_COMMAND hooks see it.
+    # __git_ps1 previously preserved that status itself.
+    local prompt_status=$?
     if [ -n "${__PS1__:-}" ]; then
         PS1="$__PS1__"
-        return
+        return "$prompt_status"
     fi
-    local pre post
+    local pre post git_color
     pre='\[\033[0m\][\A]'
     post=" \[\033[0m\]\W \[\033[35m\]${DOT_PROMPT_FACE}\[\033[0m\] "
     if declare -F __git_ps1 >/dev/null 2>&1; then
-        __git_ps1 "$pre" "$post"
+        git_color=32
+        if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
+            git_color=31
+        fi
+        __git_ps1 "$pre" "$post" " (\[\033[${git_color}m\]%s\[\033[0m\])"
     else
         PS1="${pre}${post}"
     fi
+    return "$prompt_status"
 }
 
 # Prepend once so Ghostty and other hooks on PROMPT_COMMAND still run.
