@@ -163,6 +163,7 @@ check_link "inputrc" "$CHECKOUT/shell/inputrc" "$HOME/.inputrc"
 check_link "gitconfig" "$CHECKOUT/gitconfig" "$HOME/.gitconfig"
 check_link "vimrc" "$CHECKOUT/vimrc" "$HOME/.vimrc"
 check_link "mise" "$CHECKOUT/mise.toml" "$HOME/.config/mise/config.toml"
+check_link "ghostty" "$CHECKOUT/ghostty.ini" "$HOME/.config/ghostty/config"
 check_link "tmux.conf" "$CHECKOUT/tmux.conf" "$HOME/.tmux.conf"
 check_link "editorconfig" "$CHECKOUT/editorconfig" "$HOME/.editorconfig"
 

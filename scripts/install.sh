@@ -474,6 +474,14 @@ else
     failed=1
 fi
 
+ghostty_config_dir="$HOME/.config/ghostty"
+if mkdir -p -- "$ghostty_config_dir"; then
+    link_one "$DOT_DIR/ghostty.ini" "$ghostty_config_dir/config"
+else
+    log_err "could not create $ghostty_config_dir"
+    failed=1
+fi
+
 if [ "$skip_brew" -eq 1 ] || [ "$skip_mise" -eq 1 ] || [ "$brew_ok" -ne 1 ]; then
     log_line "skipping mise install"
 else
