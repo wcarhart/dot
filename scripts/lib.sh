@@ -228,25 +228,25 @@ log_step_done() {
     now=$(date +%s)
     elapsed=$((now - step_started_at))
     dur=$(format_elapsed "$elapsed")
-    printf '%s• %s complete in %s •%s\n' "$color_magenta" "$step_label" "$dur" "$color_reset"
+    printf '%s• %s complete in %s •%s\n\n' "$color_magenta" "$step_label" "$dur" "$color_reset"
 }
 
 # log a line to stdout
 log_line() {
-    printf '  %s\n' "$*"
+    printf '%s• %s%s\n' "$color_magenta" "$color_reset" "$*"
 }
 
 # log an error to stderr
 log_err() {
-    printf '  %s %s\n' "${color_red}error${color_reset}:" "$*" >&2
+    printf '%s• %s%s %s\n' "$color_magenta" "$color_reset" "${color_red}error${color_reset}:" "$*" >&2
 }
 
 # log a warning to stderr
 log_warn() {
-    printf '  %s %s\n' "${color_yellow}warn${color_reset}:" "$*" >&2
+    printf '%s• %s%s %s\n' "$color_magenta" "$color_reset" "${color_yellow}warn${color_reset}:" "$*" >&2
 }
 
 # log a cloning step
 log_cloning() {
-    printf '  Cloning %s%s%s...\n' "$color_magenta" "$1" "$color_reset"
+    printf '%s• %sCloning %s%s%s...\n' "$color_magenta" "$color_reset" "$color_magenta" "$1" "$color_reset"
 }

@@ -22,6 +22,7 @@ echo '/opt/homebrew/bin/bash' | sudo tee -a /etc/shells
 chsh -s /opt/homebrew/bin/bash
 exec '/opt/homebrew/bin/bash' -l # or just open a new terminal
 ```
+Installation is idempotent and will not overwrite existing configurations unless `--force` is provided. When overwritten, a backup of the existing configuration is saved to `~/.dot-backups/`.
 
 # Usage
 See `shell/functions/` for the latest custom functions, all of which support `--help`. See `bashrc` for the repo entrypoint once installed.

@@ -367,7 +367,9 @@ print_shell_hint() {
     fi
 
     quoted=$(shell_quote "$bash_path")
-    printf '\n%s\n' "To use Homebrew Bash as your login shell, run:"
+    printf '\n%s%s%s\n' "$color_red" "⚠ Your login shell is not Homebrew Bash.⚠" "$color_reset"
+    printf '%s\n\n' "Do not skip this step, dot is not operational until you update your login shell to Homebrew Bash."
+    printf '%s\n' "To use Homebrew Bash as your login shell, run:"
     if ! grep -Fxq "$bash_path" /etc/shells 2>/dev/null; then
         printf '  %s%s%s\n' "$color_magenta" "echo $quoted | sudo tee -a /etc/shells" "$color_reset"
     fi
@@ -388,7 +390,7 @@ finish_install_step() {
 
 fail_install() {
     finish_install_step
-    printf '%s%s%s\n' "$color_red" "Dot installation failed" "$color_reset"
+    printf '%s%s%s\n\n' "$color_red" "Dot installation failed" "$color_reset"
     exit 1
 }
 
@@ -399,13 +401,13 @@ trap finish_install_step EXIT
 
 printf '%s%s%s\n' "$color_magenta" '••• WELCOME TO DOT •••' "$color_reset"
 if [ "$skip_repos" -eq 0 ]; then
-    printf 'Running install pipeline: %s > %s > %s > %s\n' \
+    printf 'Running install pipeline: %s > %s > %s > %s\n\n' \
         "$(pipeline_step doctor)" \
         "$(pipeline_step install)" \
         "$(pipeline_step clone)" \
         "$(pipeline_step doctor)"
 else
-    printf 'Running install pipeline: %s > %s > %s\n' \
+    printf 'Running install pipeline: %s > %s > %s\n\n' \
         "$(pipeline_step doctor)" \
         "$(pipeline_step install)" \
         "$(pipeline_step doctor)"
@@ -483,7 +485,6 @@ finish_install_step
 
 if [ "$skip_repos" -eq 0 ]; then
     if ! "$DOT_DIR/scripts/clone.sh"; then
-        log_err "repository provisioning was not successful"
         repos_failed=1
     fi
 fi
@@ -493,14 +494,14 @@ if ! "$DOT_DIR/scripts/doctor.sh"; then
 fi
 
 if [ "$failed" -ne 0 ]; then
-    printf '%s%s%s\n' "$color_red" "Dot installation failed" "$color_reset"
+    printf '%s%s%s\n\n' "$color_red" "Dot installation failed" "$color_reset"
     exit_code=1
 elif [ "$repos_failed" -ne 0 ]; then
-    printf '%s%s%s\n' "$color_yellow" "Dot installation completed with some issues" "$color_reset"
+    printf '%s%s%s\n\n' "$color_yellow" "Dot installation completed with noncritical errors" "$color_reset"
     print_logo
     exit_code=1
 else
-    printf '%s%s%s\n' "$color_green" "Dot installation successful" "$color_reset"
+    printf '%s%s%s\n\n' "$color_green" "Dot installation successful" "$color_reset"
     print_logo
     exit_code=0
 fi

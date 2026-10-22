@@ -56,8 +56,19 @@ print_repo_hint() {
     fi
 }
 
+# shellcheck disable=SC2329 # invoked by the EXIT trap
+finish_clone() {
+    rc=$?
+    trap - EXIT
+    if [ "$rc" -ne 0 ]; then
+        log_err "repository provisioning was not successful"
+    fi
+    log_step_done
+    exit "$rc"
+}
+
 log_step clone
-trap 'log_step_done' EXIT
+trap finish_clone EXIT
 
 # validate installation
 if [ -z "${HOME:-}" ] || [ ! -d "$HOME" ]; then
