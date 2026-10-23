@@ -18,6 +18,7 @@ Commands:
   repo       Manage dot tracked repositories
   doctor     Validate the current dot installation
   install    Install or update dot
+  update     Update tracked applications and tools
   git        Run git in the dot checkout
 
 Options:
@@ -113,6 +114,17 @@ Options:
   -r, --skip-repos    Do not clone repositories
   -m, --skip-mise     Do not run mise install
   -h, --help          Show this help message and exit
+EOF
+}
+
+usage_update() {
+    cat <<'EOF'
+Usage: dot update [-h]
+
+Update tracked applications and tools (not repositories).
+
+Options:
+  -h, --help    Show this help message and exit
 EOF
 }
 
@@ -413,6 +425,58 @@ cmd_install() {
     exec "$SCRIPT_DIR/install.sh" "$@"
 }
 
+cmd_update() {
+    reject_args usage_update "$@"
+
+    if ! command -v brew >/dev/null 2>&1; then
+        if ! brew=$(brew_bin 2>/dev/null); then
+            log_err "brew is not on PATH"
+            exit 1
+        fi
+    else
+        brew=brew
+    fi
+
+    if ! command -v mise >/dev/null 2>&1; then
+        log_err "mise is not on PATH"
+        exit 1
+    fi
+
+    if ! check_brew_permissions; then
+        exit 1
+    fi
+
+    brewfile="$DOT_DIR/Brewfile"
+    if [ ! -f "$brewfile" ]; then
+        log_err "$brewfile not found"
+        exit 1
+    fi
+
+    log_line "brew update"
+    if ! "$brew" update; then
+        log_err "brew update failed"
+        exit 1
+    fi
+
+    log_line "brew bundle upgrade --file=$brewfile"
+    if ! "$brew" bundle upgrade --file="$brewfile"; then
+        log_err "brew bundle upgrade failed"
+        exit 1
+    fi
+
+    log_line "mise upgrade --global"
+    if ! mise upgrade --global; then
+        log_err "mise upgrade failed"
+        exit 1
+    fi
+
+    log_line "brew cleanup"
+    if ! "$brew" cleanup; then
+        log_err "brew cleanup failed"
+        exit 1
+    fi
+}
+
 cmd_git() {
     if [ "$#" -eq 0 ]; then
         usage_git
@@ -453,6 +517,10 @@ case $1 in
     install)
         shift
         cmd_install "$@"
+        ;;
+    update)
+        shift
+        cmd_update "$@"
         ;;
     git)
         shift
