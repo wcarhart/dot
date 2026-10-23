@@ -356,6 +356,16 @@ __/\\\\\\\\\\\\__________/\\\\\_______/\\\\\\\\\\\\\\\_
 EOF
 }
 
+xcode_clt_hint() {
+    if xcode-select -p >/dev/null 2>&1; then
+        return 0
+    fi
+
+    printf '%s%s%s\n' "$color_yellow" "⚠ Xcode Command Line Tools are not installed ⚠" "$color_reset"
+    printf '%s\n' "To install them, run:"
+    printf '  %s%s%s\n\n' "$color_magenta" "xcode-select --install" "$color_reset"
+}
+
 print_shell_hint() {
     prefix=$(brew_prefix 2>/dev/null || true)
     if [ -z "$prefix" ]; then
@@ -533,6 +543,7 @@ if [ -n "$BACKUP_DIR" ]; then
     printf '%s\n' "Backups: $BACKUP_DIR"
 fi
 
+xcode_clt_hint
 print_shell_hint
 
 exit "$exit_code"

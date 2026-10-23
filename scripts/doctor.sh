@@ -78,6 +78,12 @@ if [ "$preflight_only" -eq 1 ]; then
     exit "$status"
 fi
 
+if xcode-select -p >/dev/null 2>&1; then
+    pass "xcode clt"
+else
+    warn "xcode clt"
+fi
+
 if [ -z "${HOME:-}" ] || [ ! -d "$HOME" ]; then
     exit "$status"
 fi
