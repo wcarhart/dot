@@ -32,31 +32,82 @@ if [ "$#" -gt 0 ]; then
     esac
 fi
 
-# set a global boolean default when it is not already the requested value
-ensure_bool_default() {
-    key=$1
-    value=$2
-    case $value in
-        true|false) ;;
+# set a defaults value when it is not already the requested value
+# domain -g is the global domain; type is bool or int
+# sets wrote_default=1 when a write happens
+ensure_default() {
+    domain=$1
+    type=$2
+    key=$3
+    value=$4
+    wrote_default=0
+
+    case $type in
+        bool)
+            case $value in
+                true|false) ;;
+                *)
+                    log_err "invalid boolean for $key: $value"
+                    return 1
+                    ;;
+            esac
+            ;;
+        int)
+            case $value in
+                ''|*[!0-9-]*|-|-*[!0-9]*)
+                    log_err "invalid integer for $key: $value"
+                    return 1
+                    ;;
+            esac
+            ;;
         *)
-            log_err "invalid boolean for $key: $value"
+            log_err "invalid defaults type for $key: $type"
             return 1
             ;;
     esac
 
-    current=$(defaults read -g "$key" 2>/dev/null || true)
-    case "$value:$current" in
-        true:1|true:true|false:0|false:false)
-            log_line "ok $key"
-            return 0
+    if [ "$domain" = -g ]; then
+        current=$(defaults read -g "$key" 2>/dev/null || true)
+    else
+        current=$(defaults read "$domain" "$key" 2>/dev/null || true)
+    fi
+
+    case $type in
+        bool)
+            case "$value:$current" in
+                true:1|true:true|false:0|false:false)
+                    log_line "ok $key"
+                    return 0
+                    ;;
+            esac
+            ;;
+        int)
+            if [ "$current" = "$value" ]; then
+                log_line "ok $key"
+                return 0
+            fi
             ;;
     esac
 
-    log_line "defaults write -g $key -bool $value"
-    if ! defaults write -g "$key" -bool "$value"; then
-        log_err "could not set $key"
-        return 1
+    if [ "$domain" = -g ]; then
+        log_line "defaults write -g $key -$type $value"
+        if ! defaults write -g "$key" "-$type" "$value"; then
+            log_err "could not set $key"
+            return 1
+        fi
+    else
+        log_line "defaults write $domain $key -$type $value"
+        if ! defaults write "$domain" "$key" "-$type" "$value"; then
+            log_err "could not set $key"
+            return 1
+        fi
     fi
+    wrote_default=1
+}
+
+# set a global boolean default when it is not already the requested value
+ensure_bool_default() {
+    ensure_default -g bool "$1" "$2"
 }
 
 failed=0
@@ -65,5 +116,36 @@ failed=0
 ensure_bool_default ApplePressAndHoldEnabled false || failed=1
 # turn off automatic text replacement
 ensure_bool_default WebAutomaticTextReplacementEnabled false || failed=1
+
+clock_changed=0
+
+# menu bar clock: always show the date
+ensure_default com.apple.menuextra.clock int ShowDate 1 || failed=1
+if [ "$wrote_default" -eq 1 ]; then
+    clock_changed=1
+fi
+# show the day of the week
+ensure_default com.apple.menuextra.clock bool ShowDayOfWeek true || failed=1
+if [ "$wrote_default" -eq 1 ]; then
+    clock_changed=1
+fi
+# show AM/PM
+ensure_default com.apple.menuextra.clock bool ShowAMPM true || failed=1
+if [ "$wrote_default" -eq 1 ]; then
+    clock_changed=1
+fi
+# display the time with seconds
+ensure_default com.apple.menuextra.clock bool ShowSeconds true || failed=1
+if [ "$wrote_default" -eq 1 ]; then
+    clock_changed=1
+fi
+
+if [ "$clock_changed" -eq 1 ]; then
+    log_line "killall SystemUIServer"
+    if ! killall SystemUIServer; then
+        log_err "could not restart SystemUIServer"
+        failed=1
+    fi
+fi
 
 exit "$failed"
