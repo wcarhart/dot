@@ -4,6 +4,7 @@ git@github.com:wcarhart/buttermilk.git
 git@github.com:wcarhart/dot.git
 git@github.com:wcarhart/ethos.git
 git@github.com:wcarhart/fox.git
+git@github.com:wcarhart/framecraft.git
 git@github.com:wcarhart/gridwave.git
 git@github.com:wcarhart/home.git
 git@github.com:wcarhart/koi.git
