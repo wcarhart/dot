@@ -104,15 +104,16 @@ EOF
 
 usage_install() {
     cat <<'EOF'
-Usage: dot install [-f] [-b] [-r] [-m] [-h]
+Usage: dot install [-f] [-b] [-r] [-m] [-u] [-h]
 
-Install dot for the current user.
+Install or update dot for the current user.
 
 Options:
   -f, --force         Forcefully overwrite mismatched configuration
   -b, --skip-brew     Do not run brew bundle
   -r, --skip-repos    Do not clone repositories
   -m, --skip-mise     Do not run mise install
+  -u, --update        Run brew update and upgrade Brewfile packages (skipped by default)
   -h, --help          Show this help message and exit
 EOF
 }

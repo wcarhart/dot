@@ -12,6 +12,7 @@ force=0
 skip_brew=0
 skip_repos=0
 skip_mise=0
+update=0
 failed=0
 repos_failed=0
 install_step_open=0
@@ -19,9 +20,11 @@ BACKUP_DIR=
 
 usage() {
     cat <<'EOF'
-Usage: install.sh [-f] [-b] [-r] [-m] [-h]
+Usage: install.sh [-f] [-b] [-r] [-m] [-u] [-h]
 
 Install dot into the current user's home directory. Does not change the login shell.
+Homebrew packages from the Brewfile are installed but not updated or upgraded
+unless --update is passed.
 
 Options:
   -f, --force       Forcefully overwrite existing configuration. Existing directories
@@ -30,6 +33,7 @@ Options:
   -b, --skip-brew   Do not run brew bundle
   -r, --skip-repos  Do not clone repositories listed in repos.txt
   -m, --skip-mise   Do not run mise install
+  -u, --update      Run brew update and upgrade Brewfile packages
   -h, --help        Show this help and exit
 EOF
 }
@@ -51,6 +55,9 @@ while [ "$#" -gt 0 ]; do
             ;;
         -m|--skip-mise)
             skip_mise=1
+            ;;
+        -u|--update)
+            update=1
             ;;
         --)
             shift
@@ -455,12 +462,27 @@ fi
 brew_ok=0
 if [ "$skip_brew" -eq 0 ]; then
     log_line "This can take up to 15m, please be patient..."
-    log_line "brew bundle --file=$DOT_DIR/Brewfile"
-    if brew bundle --file="$DOT_DIR/Brewfile"; then
-        brew_ok=1
+    if [ "$update" -eq 1 ]; then
+        log_line "brew update"
+        if ! brew update; then
+            log_err "brew update failed"
+            fail_install
+        fi
+        log_line "brew bundle upgrade --file=$DOT_DIR/Brewfile"
+        if brew bundle upgrade --file="$DOT_DIR/Brewfile"; then
+            brew_ok=1
+        else
+            log_err "brew bundle upgrade failed"
+            fail_install
+        fi
     else
-        log_err "brew bundle failed"
-        fail_install
+        log_line "brew bundle --no-upgrade --file=$DOT_DIR/Brewfile"
+        if HOMEBREW_NO_AUTO_UPDATE=1 brew bundle --no-upgrade --file="$DOT_DIR/Brewfile"; then
+            brew_ok=1
+        else
+            log_err "brew bundle failed"
+            fail_install
+        fi
     fi
 else
     log_line "skipping brew bundle"
