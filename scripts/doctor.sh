@@ -269,7 +269,12 @@ if [ -f "$CHECKOUT/Brewfile" ]; then
         else
             list=$formulae
         fi
-        if printf '%s\n' "$list" | grep -Fxq -- "$name"; then
+        # brew list prints the cellar/caskroom token, not user/tap/name
+        token=$name
+        case $name in
+            */*/*) token=${name##*/} ;;
+        esac
+        if printf '%s\n' "$list" | grep -Fxq -- "$token"; then
             pass "package $name"
         else
             fail "package $name"
