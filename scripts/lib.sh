@@ -250,3 +250,51 @@ log_warn() {
 log_cloning() {
     printf '%s• %sCloning %s%s%s...\n' "$color_magenta" "$color_reset" "$color_magenta" "$1" "$color_reset"
 }
+
+# Required metadata uses a deliberately small YAML subset: unquoted single-line
+# scalars without YAML indicators/comments. Optional fields are left to agents.
+# Print name<TAB>description; never evaluate skill content as shell code.
+skill_metadata() (
+    skill_dir=$1
+    if [ ! -d "$skill_dir" ] || [ ! -f "$skill_dir/SKILL.md" ]; then
+        log_err "$skill_dir: missing skill directory or SKILL.md"
+        return 1
+    fi
+    LC_ALL=C awk -v expected="${skill_dir##*/}" '
+        function bad(message) { print FILENAME ": " message > "/dev/stderr"; invalid=1 }
+        NR == 1 { if ($0 != "---") { bad("expected YAML frontmatter"); exit }; next }
+        $0 == "---" { closed=1; exit }
+        /^(name|description):/ {
+            key=$0; sub(/:.*/, "", key)
+            value=$0; sub(/^[^:]*:[ \t]*/, "", value); sub(/[ \t]+$/, "", value)
+            if (seen[key]++) bad("duplicate " key)
+            if (value == "" || value ~ /^[\047\042>|&*!{\[]/ || value ~ /: |[ \t]#/ || value ~ /[\t\r]/)
+                bad(key " must be an unquoted single-line scalar without YAML indicators or comments")
+            values[key]=value
+        }
+        END {
+            if (!closed) bad("missing closing frontmatter delimiter")
+            name=values["name"]; description=values["description"]
+            if (length(name) < 1 || length(name) > 64 || name ~ /[^a-z0-9-]/ || name ~ /^-|-$/ || name ~ /--/)
+                bad("invalid skill name")
+            if (name != expected) bad("name must match directory " expected)
+            if (length(description) < 1 || length(description) > 1024) bad("description must contain 1-1024 characters")
+            if (invalid) exit 1
+            print name "\t" description
+        }
+    ' "$skill_dir/SKILL.md"
+)
+
+# Validate every entry before callers install or list anything.
+validate_skills() (
+    if [ ! -d "$1/agents/skills" ]; then
+        log_err "missing $1/agents/skills"
+        return 1
+    fi
+    skill_invalid=0
+    for skill_source in "$1/agents/skills/"* "$1/agents/skills/".[!.]* "$1/agents/skills/"..?*; do
+        [ -e "$skill_source" ] || [ -L "$skill_source" ] || continue
+        skill_metadata "$skill_source" >/dev/null || skill_invalid=1
+    done
+    return "$skill_invalid"
+)

@@ -90,6 +90,28 @@ fi
 
 CHECKOUT=$(phys_path "$SCRIPT_DIR/..")
 
+# Installation checks are deliberately after the preflight exit.
+if validate_skills "$CHECKOUT"; then
+    for skill_source in "$CHECKOUT/agents/skills/"*; do
+        [ -d "$skill_source" ] || continue
+        pass "skill ${skill_source##*/} metadata"
+        for skill_agent in .agents .claude; do
+            skill_dest="$HOME/$skill_agent/skills/${skill_source##*/}"
+            if [ ! -L "$skill_dest" ]; then
+                fail "skill $skill_dest missing symlink"
+            elif [ ! -d "$skill_dest" ]; then
+                fail "skill $skill_dest broken link"
+            elif [ "$(phys_path "$skill_dest")" != "$(phys_path "$skill_source")" ]; then
+                fail "skill $skill_dest unexpected target"
+            else
+                pass "skill $skill_dest"
+            fi
+        done
+    done
+else
+    fail "skill definitions"
+fi
+
 cfg_dot=
 cfg_code=
 if [ -L "$HOME/.dotrc" ]; then

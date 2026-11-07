@@ -14,6 +14,7 @@ Usage: dot [-h] COMMAND [ARGS...]
 Manage dot installation and repository.
 
 Commands:
+  skill      List available agent skills
   status     Show dot status
   repo       Manage dot tracked repositories
   doctor     Validate the current dot installation
@@ -24,6 +25,28 @@ Commands:
 Options:
   -h, --help    Show this help message and exit
 EOF
+}
+
+usage_skill() {
+    cat <<'EOF'
+Usage: dot skill [-h]
+
+List skills available in the dot repository.
+
+Options:
+  -h, --help    Show this help message and exit
+EOF
+}
+
+cmd_skill() {
+    reject_args usage_skill "$@"
+    validate_skills "$DOT_DIR" || exit 1
+    for skill_source in "$DOT_DIR/agents/skills/"*; do
+        [ -d "$skill_source" ] || continue
+        skill_metadata "$skill_source" | while IFS="$(printf '\t')" read -r skill_name _skill_description; do
+            printf '%s\n' "$skill_name"
+        done
+    done
 }
 
 usage_status() {
@@ -502,6 +525,10 @@ case $1 in
     -h|--help)
         usage
         exit 0
+        ;;
+    skill)
+        shift
+        cmd_skill "$@"
         ;;
     status)
         shift

@@ -172,7 +172,7 @@ link_one() {
     # 1 backs up and replaces a mismatched path, the default leaves it in place
     replace=${3:-0}
 
-    if [ ! -f "$src" ]; then
+    if [ ! -f "$src" ] && [ ! -d "$src" ]; then
         log_err "missing $src"
         failed=1
         return 0
@@ -207,7 +207,12 @@ link_one() {
         failed=1
         return 0
     fi
-    base=$(basename -- "$dest")
+    base=${4:-$(basename -- "$dest")}
+    if ! mkdir -p -- "$(dirname -- "$BACKUP_DIR/$base")"; then
+        log_err "could not create backup parent for $dest"
+        failed=1
+        return 0
+    fi
     if ! mv -- "$dest" "$BACKUP_DIR/$base"; then
         log_err "could not back up $dest"
         failed=1
@@ -219,6 +224,26 @@ link_one() {
         return 0
     fi
     log_line "backed up $dest to $BACKUP_DIR/$base"
+}
+
+setup_skills() {
+    if ! validate_skills "$DOT_DIR"; then
+        failed=1
+        return
+    fi
+    for skill_source in "$DOT_DIR/agents/skills/"*; do
+        [ -d "$skill_source" ] || continue
+        skill_name=${skill_source##*/}
+        for skill_agent in .agents .claude; do
+            skill_parent="$HOME/$skill_agent/skills"
+            if mkdir -p -- "$skill_parent"; then
+                link_one "$skill_source" "$skill_parent/$skill_name" 0 "$skill_agent/skills/$skill_name"
+            else
+                log_err "could not create $skill_parent"
+                failed=1
+            fi
+        done
+    done
 }
 
 # downloads the Sublime Package Control package to the given destination
@@ -488,6 +513,7 @@ else
     log_line "skipping brew bundle"
 fi
 
+setup_skills
 setup_sublime "$DOT_DIR"
 
 link_one "$DOT_DIR/shell/bashrc" "$HOME/.bashrc"
