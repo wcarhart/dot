@@ -540,6 +540,14 @@ else
     failed=1
 fi
 
+orca_config_dir="$HOME/.orca"
+if mkdir -p -- "$orca_config_dir"; then
+    link_one "$DOT_DIR/orca.json" "$orca_config_dir/settings.json"
+else
+    log_err "could not create $orca_config_dir"
+    failed=1
+fi
+
 if [ "$skip_brew" -eq 1 ] || [ "$skip_mise" -eq 1 ] || [ "$brew_ok" -ne 1 ]; then
     log_line "skipping mise install"
 else

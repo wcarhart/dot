@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "keybindings": {},
+  "platforms": {
+    "darwin": {
+      "worktree.navigateUp": [],
+      "worktree.navigateDown": []
+    },
+    "linux": {},
+    "win32": {}
+  }
+}
