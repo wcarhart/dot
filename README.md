@@ -13,7 +13,7 @@ __/\\\\\\\\\\\\__________/\\\\\_______/\\\\\\\\\\\\\\\_
 Dotfiles and related tools. Specifically designed for Bash 5.2+ on macOS. Evolved from [konphig](https://github.com/wcarhart/konphig).
 
 # Install
-Clone the repository, then run `install.sh` (_not_ `scripts/install.sh`). Then change your default shell and restart your terminal.
+If you're on a fresh machine or haven't ever installed dot, clone the repository and then run `install.sh` (_not_ `scripts/install.sh`). Then change your default shell and restart your terminal.
 ```bash
 git clone git@github.com:wcarhart/dot.git
 cd dot
@@ -23,6 +23,8 @@ chsh -s /opt/homebrew/bin/bash
 exec '/opt/homebrew/bin/bash' -l # or just open a new terminal
 ```
 Installation is idempotent and will not overwrite existing configurations unless `--force` is provided. When overwritten, a backup of the existing configuration is saved to `~/.dot/backups/`.
+
+Once dot is installed, you never need to perform the installation manually ever again. Going forward you can just use `dot install`.
 
 # Usage
 Once installed, you can interact with dot via `dot`. See `dot --help` to get started.

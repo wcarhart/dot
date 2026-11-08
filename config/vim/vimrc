@@ -59,3 +59,9 @@ autocmd BufReadPost *
   \ if line("'\"") > 0 && line("'\"") <= line("$") |
   \   execute "normal! g'\"" |
   \ endif
+
+" enable Emacs-like ctrl+E and ctrl+A for cursor seeking
+nnoremap <C-a> 0
+nnoremap <C-e> $
+inoremap <C-a> <Home>
+inoremap <C-e> <End>
