@@ -1,3 +1,4 @@
+brew "anomalyco/tap/opencode-v2"
 brew "bash"
 brew "bash-completion@2"
 brew "bats-core"
