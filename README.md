@@ -27,7 +27,7 @@ Installation is idempotent and will not overwrite existing configurations unless
 # Usage
 Once installed, you can interact with dot via `dot`. See `dot --help` to get started.
 
-See `shell/functions/` for the latest custom functions, all of which support `--help`. See `bashrc` for the repo entrypoint once installed.
+See `shell/functions/` for the latest custom functions, all of which support `--help`. See `bashrc` for the repo entrypoint once installed. Third-party app-specific configurations live under `config/<app>/`.
 
 To have dot manage repositories on your local machine, add them to `repos.txt`. You can configure other local options in `~/.dotrc`, specifically:
 * `DOT_DIR` - the path to the local dot repository

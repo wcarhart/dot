@@ -188,12 +188,21 @@ check_link() {
 check_link "bashrc" "$CHECKOUT/shell/bashrc" "$HOME/.bashrc"
 check_link "bash_profile" "$CHECKOUT/shell/bash_profile" "$HOME/.bash_profile"
 check_link "inputrc" "$CHECKOUT/shell/inputrc" "$HOME/.inputrc"
-check_link "gitconfig" "$CHECKOUT/gitconfig" "$HOME/.gitconfig"
-check_link "vimrc" "$CHECKOUT/vimrc" "$HOME/.vimrc"
-check_link "mise" "$CHECKOUT/mise.toml" "$HOME/.config/mise/config.toml"
-check_link "ghostty" "$CHECKOUT/ghostty.ini" "$HOME/.config/ghostty/config"
-check_link "orca" "$CHECKOUT/orca/settings.json" "$HOME/.orca/settings.json"
-orca_plugin="$CHECKOUT/orca/plugins/bats-syntax"
+log_app git
+check_link "gitconfig" "$CHECKOUT/config/git/gitconfig" "$HOME/.gitconfig"
+log_app_done
+log_app vim
+check_link "vimrc" "$CHECKOUT/config/vim/vimrc" "$HOME/.vimrc"
+log_app_done
+log_app mise
+check_link "mise" "$CHECKOUT/config/mise/mise.toml" "$HOME/.config/mise/config.toml"
+log_app_done
+log_app ghostty
+check_link "ghostty" "$CHECKOUT/config/ghostty/ghostty.ini" "$HOME/.config/ghostty/config"
+log_app_done
+log_app orca
+check_link "orca" "$CHECKOUT/config/orca/settings.json" "$HOME/.orca/settings.json"
+orca_plugin="$CHECKOUT/config/orca/plugins/bats-syntax"
 for orca_file in orca-plugin.json syntaxes/bats.tmLanguage.json; do
     case $orca_file in
         orca-plugin.json) orca_label="orca bats manifest" ;;
@@ -234,21 +243,28 @@ else
     warn "orca cli unavailable"
 fi
 
-check_link "tmux.conf" "$CHECKOUT/tmux.conf" "$HOME/.tmux.conf"
+log_app_done
+
+log_app tmux
+check_link "tmux.conf" "$CHECKOUT/config/tmux/tmux.conf" "$HOME/.tmux.conf"
+log_app_done
 check_link "editorconfig" "$CHECKOUT/editorconfig" "$HOME/.editorconfig"
 
+log_app sublime
 sublime_support=$(sublime_support_dir)
 check_link "sublime preferences" \
-    "$CHECKOUT/sublime/Preferences.sublime-settings" \
+    "$CHECKOUT/config/sublime/Preferences.sublime-settings" \
     "$sublime_support/Packages/User/Preferences.sublime-settings"
 check_link "sublime package control" \
-    "$CHECKOUT/sublime/Package Control.sublime-settings" \
+    "$CHECKOUT/config/sublime/Package Control.sublime-settings" \
     "$sublime_support/Packages/User/Package Control.sublime-settings"
 if [ -f "$sublime_support/Installed Packages/Package Control.sublime-package" ]; then
     pass "sublime package-control"
 else
     fail "sublime package-control"
 fi
+
+log_app_done
 
 if [ -f "$CHECKOUT/shell/inputrc" ]; then
     pass "inputrc"

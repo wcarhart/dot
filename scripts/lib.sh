@@ -231,19 +231,31 @@ log_step_done() {
     printf '%s• %s complete in %s •%s\n\n' "$color_magenta" "$step_label" "$dur" "$color_reset"
 }
 
+# group app configuration messages without changing pipeline step timing
+log_indent=
+log_app() {
+    log_indent=
+    log_line "$1"
+    log_indent='  '
+}
+
+log_app_done() {
+    log_indent=
+}
+
 # log a line to stdout
 log_line() {
-    printf '%s• %s%s\n' "$color_magenta" "$color_reset" "$*"
+    printf '%s• %s%s%s\n' "$color_magenta" "$color_reset" "$log_indent" "$*"
 }
 
 # log an error to stderr
 log_err() {
-    printf '%s• %s%s %s\n' "$color_magenta" "$color_reset" "${color_red}error${color_reset}:" "$*" >&2
+    printf '%s• %s%s%s %s\n' "$color_magenta" "$color_reset" "$log_indent" "${color_red}error${color_reset}:" "$*" >&2
 }
 
 # log a warning to stderr
 log_warn() {
-    printf '%s• %s%s %s\n' "$color_magenta" "$color_reset" "${color_yellow}warn${color_reset}:" "$*" >&2
+    printf '%s• %s%s%s %s\n' "$color_magenta" "$color_reset" "$log_indent" "${color_yellow}warn${color_reset}:" "$*" >&2
 }
 
 # log a cloning step

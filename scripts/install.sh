@@ -239,19 +239,19 @@ setup_orca() {
         [ "$(readlink "$orca_config_dir/settings.json")" = "$DOT_DIR/orca.json" ]; then
         orca_replace=1
     fi
-    link_one "$DOT_DIR/orca/settings.json" "$orca_config_dir/settings.json" "$orca_replace" orca/settings.json
+    link_one "$DOT_DIR/config/orca/settings.json" "$orca_config_dir/settings.json" "$orca_replace" orca/settings.json
     if ! orca_available; then
         log_warn "Orca CLI unavailable, skipping Bats plugin (re-run install when available)"
         return
     fi
-    if ! "$orca_cli" plugin validate "$DOT_DIR/orca/plugins/bats-syntax" --json; then
+    if ! "$orca_cli" plugin validate "$DOT_DIR/config/orca/plugins/bats-syntax" --json >/dev/null 2>&1; then
         log_err "Orca Bats plugin validation failed"
         failed=1
         return
     fi
     # cache only our successful load signature, never Orca's registry. Orca watches
     # edits live, a changed checkout or content also gets an explicit load here
-    orca_signature=$( { printf '%s\n' "$DOT_DIR"; cat "$DOT_DIR/orca/plugins/bats-syntax/orca-plugin.json" "$DOT_DIR/orca/plugins/bats-syntax/syntaxes/bats.tmLanguage.json"; } | cksum)
+    orca_signature=$( { printf '%s\n' "$DOT_DIR/config/orca/plugins/bats-syntax"; cat "$DOT_DIR/config/orca/plugins/bats-syntax/orca-plugin.json" "$DOT_DIR/config/orca/plugins/bats-syntax/syntaxes/bats.tmLanguage.json"; } | cksum)
     orca_receipt="$orca_config_dir/dot-bats-syntax.cksum"
     if [ -f "$orca_receipt" ] && [ "$(cat "$orca_receipt")" = "$orca_signature" ] &&
         command -v jq >/dev/null 2>&1 &&
@@ -259,9 +259,10 @@ setup_orca() {
         log_line "ok Orca Bats plugin"
         return
     fi
-    if "$orca_cli" plugin dev load "$DOT_DIR/orca/plugins/bats-syntax" --json; then
-        if "$orca_cli" plugin enable local.bats-syntax --json; then
+    if "$orca_cli" plugin dev load "$DOT_DIR/config/orca/plugins/bats-syntax" --json >/dev/null 2>&1; then
+        if "$orca_cli" plugin enable local.bats-syntax --json >/dev/null 2>&1; then
             printf '%s\n' "$orca_signature" > "$orca_receipt"
+            log_line "ok Orca Bats plugin"
         else
             log_warn "Could not enable Orca Bats plugin, check Settings > Plugins"
         fi
@@ -373,8 +374,8 @@ setup_sublime() {
     fi
 
     # 1 backs up conflicting settings without requiring -f, correct symlink is left alone so Package Control can write through it
-    link_one "$dot_dir/sublime/Preferences.sublime-settings" "$user_dir/Preferences.sublime-settings" 1
-    link_one "$dot_dir/sublime/Package Control.sublime-settings" "$user_dir/Package Control.sublime-settings" 1
+    link_one "$dot_dir/config/sublime/Preferences.sublime-settings" "$user_dir/Preferences.sublime-settings" 1
+    link_one "$dot_dir/config/sublime/Package Control.sublime-settings" "$user_dir/Package Control.sublime-settings" 1
 }
 
 use_brew_shellenv() {
@@ -530,7 +531,7 @@ fi
 
 brew_ok=0
 if [ "$skip_brew" -eq 0 ]; then
-    log_line "This can take up to 15m, please be patient..."
+    log_line "Brew installation can take up to 15m, please be patient..."
     if [ "$update" -eq 1 ]; then
         log_line "brew update"
         if ! brew update; then
@@ -558,33 +559,32 @@ else
 fi
 
 setup_skills
+log_app sublime
 setup_sublime "$DOT_DIR"
+log_app_done
 
 link_one "$DOT_DIR/shell/bashrc" "$HOME/.bashrc"
 link_one "$DOT_DIR/shell/bash_profile" "$HOME/.bash_profile"
 link_one "$DOT_DIR/shell/inputrc" "$HOME/.inputrc"
-link_one "$DOT_DIR/gitconfig" "$HOME/.gitconfig"
-link_one "$DOT_DIR/vimrc" "$HOME/.vimrc"
-link_one "$DOT_DIR/tmux.conf" "$HOME/.tmux.conf"
+log_app git
+link_one "$DOT_DIR/config/git/gitconfig" "$HOME/.gitconfig"
+log_app_done
+log_app vim
+link_one "$DOT_DIR/config/vim/vimrc" "$HOME/.vimrc"
+log_app_done
+log_app tmux
+link_one "$DOT_DIR/config/tmux/tmux.conf" "$HOME/.tmux.conf"
+log_app_done
 link_one "$DOT_DIR/editorconfig" "$HOME/.editorconfig"
 
+log_app mise
 mise_config_dir="$HOME/.config/mise"
 if mkdir -p -- "$mise_config_dir"; then
-    link_one "$DOT_DIR/mise.toml" "$mise_config_dir/config.toml"
+    link_one "$DOT_DIR/config/mise/mise.toml" "$mise_config_dir/config.toml"
 else
     log_err "could not create $mise_config_dir"
     failed=1
 fi
-
-ghostty_config_dir="$HOME/.config/ghostty"
-if mkdir -p -- "$ghostty_config_dir"; then
-    link_one "$DOT_DIR/ghostty.ini" "$ghostty_config_dir/config"
-else
-    log_err "could not create $ghostty_config_dir"
-    failed=1
-fi
-
-setup_orca
 
 if [ "$skip_brew" -eq 1 ] || [ "$skip_mise" -eq 1 ] || [ "$brew_ok" -ne 1 ]; then
     log_line "skipping mise install"
@@ -598,6 +598,22 @@ else
         failed=1
     fi
 fi
+log_app_done
+
+log_app ghostty
+ghostty_config_dir="$HOME/.config/ghostty"
+if mkdir -p -- "$ghostty_config_dir"; then
+    link_one "$DOT_DIR/config/ghostty/ghostty.ini" "$ghostty_config_dir/config"
+else
+    log_err "could not create $ghostty_config_dir"
+    failed=1
+fi
+
+log_app_done
+
+log_app orca
+setup_orca
+log_app_done
 
 if [ "$skip_repos" -eq 1 ]; then
     log_line "skipping repository clones"
