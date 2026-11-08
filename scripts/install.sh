@@ -29,7 +29,7 @@ unless --update is passed.
 Options:
   -f, --force       Forcefully overwrite existing configuration. Existing directories
                     are never modified, and mismatched files are backed up to
-                    ~/.dot-backups/<timestamp>/.
+                    ~/.dot/backups/<timestamp>/.
   -b, --skip-brew   Do not run brew bundle
   -r, --skip-repos  Do not clone repositories listed in repos.txt
   -m, --skip-mise   Do not run mise install
@@ -101,7 +101,7 @@ ensure_backup_dir() {
         return 0
     fi
     stamp=$(date +%Y%m%dT%H%M%S)
-    base="$HOME/.dot-backups/$stamp"
+    base="$HOME/.dot/backups/$stamp"
     dir=$base
     n=0
     while [ -e "$dir" ]; do
