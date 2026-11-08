@@ -116,6 +116,8 @@ failed=0
 ensure_bool_default ApplePressAndHoldEnabled false || failed=1
 # turn off automatic text replacement
 ensure_bool_default WebAutomaticTextReplacementEnabled false || failed=1
+# turn off inserting a period when pressing space twice
+ensure_bool_default NSAutomaticPeriodSubstitutionEnabled false || failed=1
 
 clock_changed=0
 
