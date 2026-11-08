@@ -1,4 +1,4 @@
-brew "anomalyco/tap/opencode-v2"
+brew "anomalyco/tap/opencode-v2", trusted: true
 brew "bash"
 brew "bash-completion@2"
 brew "bats-core"
