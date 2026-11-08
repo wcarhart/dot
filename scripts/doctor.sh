@@ -192,7 +192,48 @@ check_link "gitconfig" "$CHECKOUT/gitconfig" "$HOME/.gitconfig"
 check_link "vimrc" "$CHECKOUT/vimrc" "$HOME/.vimrc"
 check_link "mise" "$CHECKOUT/mise.toml" "$HOME/.config/mise/config.toml"
 check_link "ghostty" "$CHECKOUT/ghostty.ini" "$HOME/.config/ghostty/config"
-check_link "orca" "$CHECKOUT/orca.json" "$HOME/.orca/settings.json"
+check_link "orca" "$CHECKOUT/orca/settings.json" "$HOME/.orca/settings.json"
+orca_plugin="$CHECKOUT/orca/plugins/bats-syntax"
+for orca_file in orca-plugin.json syntaxes/bats.tmLanguage.json; do
+    case $orca_file in
+        orca-plugin.json) orca_label="orca bats manifest" ;;
+        *) orca_label="orca bats grammar" ;;
+    esac
+    if [ ! -s "$orca_plugin/$orca_file" ]; then
+        fail "$orca_label missing"
+    elif command -v jq >/dev/null 2>&1; then
+        if jq -e 'type == "object"' "$orca_plugin/$orca_file" >/dev/null 2>&1; then
+            pass "$orca_label"
+        else
+            fail "$orca_label invalid json"
+        fi
+    else
+        warn "$orca_label needs jq"
+    fi
+done
+if orca_available; then
+    if "$orca_cli" plugin validate --help >/dev/null 2>&1; then
+        if "$orca_cli" plugin validate "$orca_plugin" --json >/dev/null 2>&1; then
+            pass "orca bats plugin validation"
+        else
+            fail "orca bats plugin validation"
+        fi
+    else
+        warn "orca bats plugin validation unsupported"
+    fi
+    if orca_plugins=$("$orca_cli" plugin list --json 2>/dev/null) && command -v jq >/dev/null 2>&1; then
+        if printf '%s' "$orca_plugins" | jq -e '.result.plugins[] | select(.pluginKey == "local.bats-syntax" and .isDev == true and .status == "idle" and .needsReconsent == false)' >/dev/null; then
+            pass "orca bats plugin"
+        else
+            warn "orca bats plugin not ready"
+        fi
+    else
+        warn "orca bats plugin state unavailable"
+    fi
+else
+    warn "orca cli unavailable"
+fi
+
 check_link "tmux.conf" "$CHECKOUT/tmux.conf" "$HOME/.tmux.conf"
 check_link "editorconfig" "$CHECKOUT/editorconfig" "$HOME/.editorconfig"
 

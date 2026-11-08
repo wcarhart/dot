@@ -226,6 +226,50 @@ link_one() {
     log_line "backed up $dest to $BACKUP_DIR/$base"
 }
 
+# keep Orca runtime state separate from tracked settings and plugin content
+setup_orca() {
+    orca_config_dir="$HOME/.orca"
+    if ! mkdir -p -- "$orca_config_dir"; then
+        log_err "could not create $orca_config_dir"
+        failed=1
+        return
+    fi
+    orca_replace=0
+    if [ -L "$orca_config_dir/settings.json" ] &&
+        [ "$(readlink "$orca_config_dir/settings.json")" = "$DOT_DIR/orca.json" ]; then
+        orca_replace=1
+    fi
+    link_one "$DOT_DIR/orca/settings.json" "$orca_config_dir/settings.json" "$orca_replace" orca/settings.json
+    if ! orca_available; then
+        log_warn "Orca CLI unavailable, skipping Bats plugin (re-run install when available)"
+        return
+    fi
+    if ! "$orca_cli" plugin validate "$DOT_DIR/orca/plugins/bats-syntax" --json; then
+        log_err "Orca Bats plugin validation failed"
+        failed=1
+        return
+    fi
+    # cache only our successful load signature, never Orca's registry. Orca watches
+    # edits live, a changed checkout or content also gets an explicit load here
+    orca_signature=$( { printf '%s\n' "$DOT_DIR"; cat "$DOT_DIR/orca/plugins/bats-syntax/orca-plugin.json" "$DOT_DIR/orca/plugins/bats-syntax/syntaxes/bats.tmLanguage.json"; } | cksum)
+    orca_receipt="$orca_config_dir/dot-bats-syntax.cksum"
+    if [ -f "$orca_receipt" ] && [ "$(cat "$orca_receipt")" = "$orca_signature" ] &&
+        command -v jq >/dev/null 2>&1 &&
+        "$orca_cli" plugin list --json 2>/dev/null | jq -e '.result.plugins[] | select(.pluginKey == "local.bats-syntax" and .isDev == true and .status == "idle" and .needsReconsent == false)' >/dev/null; then
+        log_line "ok Orca Bats plugin"
+        return
+    fi
+    if "$orca_cli" plugin dev load "$DOT_DIR/orca/plugins/bats-syntax" --json; then
+        if "$orca_cli" plugin enable local.bats-syntax --json; then
+            printf '%s\n' "$orca_signature" > "$orca_receipt"
+        else
+            log_warn "Could not enable Orca Bats plugin, check Settings > Plugins"
+        fi
+    else
+        log_warn "Orca Bats plugin unavailable, check Orca is running and Settings > Plugins is turned on, then re-run install"
+    fi
+}
+
 setup_skills() {
     if ! validate_skills "$DOT_DIR"; then
         failed=1
@@ -540,13 +584,7 @@ else
     failed=1
 fi
 
-orca_config_dir="$HOME/.orca"
-if mkdir -p -- "$orca_config_dir"; then
-    link_one "$DOT_DIR/orca.json" "$orca_config_dir/settings.json"
-else
-    log_err "could not create $orca_config_dir"
-    failed=1
-fi
+setup_orca
 
 if [ "$skip_brew" -eq 1 ] || [ "$skip_mise" -eq 1 ] || [ "$brew_ok" -ne 1 ]; then
     log_line "skipping mise install"

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stablyai/orca/main/docs/schemas/plugins/orca-plugin.v2.schema.json",
+  "manifestVersion": 2,
+  "execution": "data",
+  "id": "bats-syntax",
+  "name": "Bats",
+  "version": "1.0.0",
+  "description": "Bash and Bats syntax highlighting for .bats files.",
+  "license": "MIT",
+  "engines": {
+    "orca": ">=1.4.246"
+  },
+  "contributes": {
+    "syntaxes": [
+      {
+        "id": "bats",
+        "title": "Bats",
+        "scopeName": "source.shell.bats",
+        "path": "syntaxes/bats.tmLanguage.json",
+        "extensions": [
+          ".bats"
+        ]
+      }
+    ]
+  }
+}

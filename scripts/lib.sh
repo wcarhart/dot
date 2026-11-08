@@ -251,9 +251,10 @@ log_cloning() {
     printf '%s• %sCloning %s%s%s...\n' "$color_magenta" "$color_reset" "$color_magenta" "$1" "$color_reset"
 }
 
-# Required metadata uses a deliberately small YAML subset: unquoted single-line
-# scalars without YAML indicators/comments. Optional fields are left to agents.
-# Print name<TAB>description; never evaluate skill content as shell code.
+# Required metadata uses a deliberately small YAML subset:
+#   * unquoted single-line scalars without YAML indicators/comments
+#   * optional fields are left to agents
+#   * print name<TAB>description; never evaluate skill content as shell code
 skill_metadata() (
     skill_dir=$1
     if [ ! -d "$skill_dir" ] || [ ! -f "$skill_dir/SKILL.md" ]; then
@@ -285,7 +286,7 @@ skill_metadata() (
     ' "$skill_dir/SKILL.md"
 )
 
-# Validate every entry before callers install or list anything.
+# validate every entry before callers install or list anything
 validate_skills() (
     if [ ! -d "$1/agents/skills" ]; then
         log_err "missing $1/agents/skills"
@@ -298,3 +299,12 @@ validate_skills() (
     done
     return "$skill_invalid"
 )
+
+# respect the CLI selected by an Orca-managed session
+orca_available() {
+    orca_cli=${ORCA_CLI_COMMAND:-orca}
+    if [ -z "${ORCA_CLI_COMMAND:-}" ] && [ -n "${ORCA_DEV_REPO_ROOT:-}" ]; then
+        orca_cli=orca-dev
+    fi
+    command -v "$orca_cli" >/dev/null 2>&1
+}
