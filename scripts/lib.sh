@@ -87,7 +87,7 @@ is_repo_root() {
     [ "$top_phys" = "$dir_phys" ]
 }
 
-# Read ~/.dotrc into cfg_dot and cfg_code
+# Read ~/.dotrc into cfg_dot, cfg_code, cfg_role, and cfg_role_source
 # 0  DOT_DIR is set (CODE_DIR may be empty)
 # 1  file is missing
 # 2  file cannot be sourced
@@ -95,20 +95,29 @@ is_repo_root() {
 read_dotrc() {
     cfg_dot=
     cfg_code=
+    cfg_role=workstation
+    cfg_role_source=default
     if [ ! -f "$HOME/.dotrc" ] && [ ! -L "$HOME/.dotrc" ]; then
         return 1
     fi
     dotrc_out=$(
         set +e
         set +u
+        unset DOT_MACHINE_ROLE
         # shellcheck disable=SC1090,SC1091
         . "$HOME/.dotrc" || exit 1
         printf 'DOT=%s\n' "${DOT_DIR-}"
         printf 'CODE=%s\n' "${CODE_DIR-}"
+        printf 'ROLE=%s\n' "${DOT_MACHINE_ROLE-workstation}"
+        printf 'ROLE_SOURCE=%s\n' "${DOT_MACHINE_ROLE+saved configuration}"
     ) || return 2
     cfg_dot=$(printf '%s\n' "$dotrc_out" | sed -n 's/^DOT=//p' | head -n 1)
     # shellcheck disable=SC2034
     cfg_code=$(printf '%s\n' "$dotrc_out" | sed -n 's/^CODE=//p' | head -n 1)
+    # shellcheck disable=SC2034 # consumed by role.sh
+    cfg_role=$(printf '%s\n' "$dotrc_out" | sed -n 's/^ROLE=//p' | head -n 1)
+    cfg_role_source=$(printf '%s\n' "$dotrc_out" | sed -n 's/^ROLE_SOURCE=//p' | head -n 1)
+    cfg_role_source=${cfg_role_source:-default}
     [ -n "$cfg_dot" ] || return 3
     return 0
 }

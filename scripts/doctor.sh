@@ -10,6 +10,8 @@ export HOMEBREW_NO_ENV_HINTS=1
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=scripts/lib.sh
 . "$SCRIPT_DIR/lib.sh"
+# shellcheck source=scripts/role.sh
+. "$SCRIPT_DIR/role.sh"
 
 status=0
 preflight_only=0
@@ -74,7 +76,17 @@ check_platform() {
 
 check_platform
 
+doctor_role_valid=1
+if ! load_machine_role 2>/dev/null; then
+    doctor_role_valid=0
+fi
+doctor_role_error=$role_error
 if [ "$preflight_only" -eq 1 ]; then
+    if [ "$doctor_role_valid" -eq 1 ]; then
+        log_line "Machine role: $(machine_role_label)"
+    else
+        fail "dot machine role: $doctor_role_error"
+    fi
     exit "$status"
 fi
 
@@ -449,4 +461,27 @@ else
     done < "$repos"
 fi
 
+if [ "$doctor_role_valid" -eq 0 ]; then
+    fail "dot machine role: $doctor_role_error"
+else
+    pass 'dot machine role'
+    if ! collect_role_profile 2>/dev/null; then
+        warn 'AC power settings could not be inspected'
+    else
+        for role_key in sleep autorestart; do
+            if ! role_supported "$role_key"; then
+                warn "AC $role_key unsupported"
+            elif [ "$cfg_role" = server ]; then
+                role_value=$(role_power_value "$role_key")
+                role_expected=$(role_target_value "$role_key")
+                if [ "$role_value" != "$role_expected" ]; then
+                    warn "AC $role_key $role_value, expected $role_expected for $cfg_role"
+                fi
+            fi
+        done
+        if [ "$cfg_role" = workstation ] && [ "$role_profile" = mismatched ]; then
+            warn 'AC power restoration pending for workstation, run dot install'
+        fi
+    fi
+fi
 exit "$status"

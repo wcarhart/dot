@@ -6,6 +6,8 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=scripts/lib.sh
 . "$SCRIPT_DIR/lib.sh"
+# shellcheck source=scripts/role.sh
+. "$SCRIPT_DIR/role.sh"
 DOT_DIR=$(phys_path "$SCRIPT_DIR/..")
 
 force=0
@@ -17,10 +19,11 @@ failed=0
 repos_failed=0
 install_step_open=0
 BACKUP_DIR=
+requested_role=
 
 usage() {
     cat <<'EOF'
-Usage: install.sh [-f] [-b] [-r] [-m] [-u] [-h]
+Usage: install.sh [-f] [-b] [-R] [-r ROLE] [-m] [-u] [-h]
 
 Install dot into the current user's home directory. Does not change the login shell.
 Homebrew packages from the Brewfile are installed but not updated or upgraded
@@ -31,7 +34,8 @@ Options:
                     are never modified, and mismatched files are backed up to
                     ~/.dot/backups/<timestamp>/.
   -b, --skip-brew   Do not run brew bundle
-  -r, --skip-repos  Do not clone repositories listed in repos.txt
+  -R, --skip-repos  Do not clone repositories listed in repos.txt
+  -r, --role ROLE   Set machine role (either 'workstation' or 'server')
   -m, --skip-mise   Do not run mise install
   -u, --update      Run brew update and upgrade Brewfile packages
   -h, --help        Show this help and exit
@@ -50,7 +54,19 @@ while [ "$#" -gt 0 ]; do
         -b|--skip-brew)
             skip_brew=1
             ;;
-        -r|--skip-repos)
+        -r|--role)
+            if [ "$#" -lt 2 ] || ! valid_machine_role "$2"; then
+                log_err '-r/--role requires workstation or server (-R/--skip-repos skips repositories)'
+                exit 2
+            fi
+            if [ -n "$requested_role" ]; then
+                log_err 'role may only be specified once'
+                exit 2
+            fi
+            requested_role=$2
+            shift
+            ;;
+        -R|--skip-repos)
             skip_repos=1
             ;;
         -m|--skip-mise)
@@ -116,6 +132,10 @@ write_dotrc() {
     code_value=$1
     tmp="$HOME/.dotrc.tmp.$$"
     {
+        if [ -n "${dotrc_backup:-}" ]; then
+            cat "$dotrc_backup" || return 1
+            printf '\n'
+        fi
         printf 'DOT_DIR=%s\n' "$(shell_quote "$DOT_DIR")"
         if [ -n "$code_value" ]; then
             printf 'CODE_DIR=%s\n' "$(shell_quote "$code_value")"
@@ -123,7 +143,8 @@ write_dotrc() {
             # shellcheck disable=SC2016
             printf '%s\n' 'CODE_DIR="$HOME/code"'
         fi
-    } > "$tmp"
+        printf 'DOT_MACHINE_ROLE="%s"\n' "$target_role"
+    } > "$tmp" || return 1
     mv -- "$tmp" "$HOME/.dotrc"
 }
 
@@ -162,6 +183,7 @@ setup_dotrc() {
         return 1
     fi
     mv -- "$HOME/.dotrc" "$BACKUP_DIR/.dotrc"
+    dotrc_backup="$BACKUP_DIR/.dotrc"
     write_dotrc "$kept_code"
     log_line "replaced $HOME/.dotrc (backup $BACKUP_DIR/.dotrc)"
 }
@@ -486,6 +508,9 @@ require_script "$DOT_DIR/scripts/clone.sh"
 require_script "$DOT_DIR/scripts/doctor.sh"
 require_script "$DOT_DIR/scripts/macos.sh"
 
+load_machine_role || exit 1
+starting_role=$cfg_role
+target_role=${requested_role:-$starting_role}
 trap finish_install_step EXIT
 
 printf '%s%s%s\n' "$color_magenta" '••• WELCOME TO DOT •••' "$color_reset"
@@ -524,6 +549,30 @@ fi
 if ! setup_dotrc; then
     fail_install
 fi
+
+if ! load_machine_role; then
+    fail_install
+fi
+
+if [ "$cfg_role" != "$target_role" ]; then
+    if ! save_machine_role "$target_role"; then
+        log_err 'could not save machine role'
+        fail_install
+    fi
+fi
+
+if [ "$starting_role" = "$target_role" ]; then
+    log_line "Retaining machine role: $starting_role"
+else
+    log_line "Changing machine role: $starting_role → $target_role"
+fi
+
+log_indent='  '
+if ! apply_role_power "$target_role"; then
+    log_indent=
+    fail_install
+fi
+log_indent=
 
 if ! "$DOT_DIR/scripts/macos.sh"; then
     failed=1
@@ -647,13 +696,13 @@ else
     exit_code=0
 fi
 
-printf '%s\n\n' "Use ${color_magenta}dot --help${color_reset} to get started"
-
 if [ -n "$BACKUP_DIR" ]; then
     printf '%s\n' "Backups: $BACKUP_DIR"
 fi
 
 xcode_clt_hint
 print_shell_hint
+
+printf '%s\n\n' "Use ${color_magenta}dot --help${color_reset} to get started"
 
 exit "$exit_code"

@@ -5,16 +5,19 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=scripts/lib.sh
 . "$SCRIPT_DIR/lib.sh"
+# shellcheck source=scripts/role.sh
+. "$SCRIPT_DIR/role.sh"
 DOT_DIR=$(phys_path "$SCRIPT_DIR/..")
 
 usage() {
     cat <<'EOF'
-Usage: dot [-h] COMMAND [ARGS...]
+Usage: dot [-h] COMMAND
 
 Manage dot installation and repository.
 
 Commands:
   skill      List available agent skills
+  role       Show machine role and power settings
   status     Show dot status
   repo       Manage dot tracked repositories
   doctor     Validate the current dot installation
@@ -25,6 +28,63 @@ Commands:
 Options:
   -h, --help    Show this help message and exit
 EOF
+}
+
+usage_role() {
+    cat <<'EOF'
+Usage: dot role [-v] [-h]
+
+Show the configured machine role and system-wide AC power settings. Use 'dot install -r ROLE' to change the machine role. Supported roles:
+  SERVER       Configure machine to never sleep, ideal for remote development
+  WORKSTATION  Default configuration, no changes to AC power settings
+
+Options:
+  -v, --verbose  Show role source, AC settings, and power profile consistency
+  -h, --help     Show this help message and exit
+EOF
+}
+
+cmd_role() {
+    if want_help "$@"; then
+        usage_role
+        exit 0
+    fi
+    role_verbose=0
+    for role_arg in "$@"; do
+        case $role_arg in
+            -v|--verbose)
+                role_verbose=1
+                ;;
+            *)
+                printf 'dot role: unexpected argument: %s\n' "$role_arg" >&2
+                usage_role >&2
+                exit 2
+                ;;
+        esac
+    done
+    load_machine_role || exit 1
+    if [ "$role_verbose" -eq 0 ]; then
+        machine_role_label
+        return
+    fi
+    collect_role_profile || exit 1
+    if [ "$cfg_role_source" = default ]; then
+        role_source=default
+    else
+        role_source="from ${color_magenta}~/.dotrc${color_reset}"
+    fi
+    printf '%-17s %s\n' 'Dot machine role:' "$cfg_role ($role_source)"
+    printf '%-17s %s\n' 'AC sleep:' "$role_sleep"
+    printf '%-17s %s\n' 'AC autorestart:' "$role_autorestart"
+    case $role_profile in
+        consistent)
+            role_profile_color=$color_green
+            ;;
+        *)
+            role_profile_color=$color_yellow
+            ;;
+    esac
+    printf '%-17s %s\n' 'Power profile:' "${role_profile_color}${role_profile}${color_reset}"
 }
 
 usage_skill() {
@@ -127,14 +187,15 @@ EOF
 
 usage_install() {
     cat <<'EOF'
-Usage: dot install [-f] [-b] [-r] [-m] [-u] [-h]
+Usage: dot install [-f] [-b] [-R] [-r ROLE] [-m] [-u] [-h]
 
 Install or update dot for the current user.
 
 Options:
   -f, --force         Forcefully overwrite mismatched configuration
   -b, --skip-brew     Do not run brew bundle
-  -r, --skip-repos    Do not clone repositories
+  -R, --skip-repos    Do not clone repositories
+  -r, --role ROLE     Set machine role (either 'workstation' or 'server')
   -m, --skip-mise     Do not run mise install
   -u, --update        Run brew update and upgrade Brewfile packages (skipped by default)
   -h, --help          Show this help message and exit
@@ -264,6 +325,7 @@ append_manifest_line() {
 cmd_status() {
     reject_args usage_status "$@"
     load_code_dir
+    load_machine_role || exit 1
     if ! git -C "$DOT_DIR" rev-parse --show-toplevel >/dev/null 2>&1; then
         log_err "DOT_DIR is not a git checkout: $DOT_DIR"
         exit 1
@@ -277,10 +339,11 @@ cmd_status() {
     else
         state="${color_green}clean${color_reset}"
     fi
-    printf '%-13s %s\n' "Dot dir:" "$DOT_DIR"
-    printf '%-13s %s\n' "Dot code dir:" "$CODE_DIR"
-    printf '%-13s %s\n' "Repo:" "$state"
-    printf '%-13s %s\n' "Version:" "$version"
+    printf '%-17s %s\n' "Dot dir:" "$DOT_DIR"
+    printf '%-17s %s\n' "Dot code dir:" "$CODE_DIR"
+    printf '%-17s %s\n' "Dot machine role:" "$(machine_role_label)"
+    printf '%-17s %s\n' "Repo:" "$state"
+    printf '%-17s %s\n' "Version:" "$version"
 }
 
 cmd_repo_add() {
@@ -522,9 +585,13 @@ if [ "$#" -eq 0 ]; then
 fi
 
 case $1 in
-    -h|--help)
+    -h|--help|help)
         usage
         exit 0
+        ;;
+    role)
+        shift
+        cmd_role "$@"
         ;;
     skill)
         shift

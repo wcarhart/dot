@@ -32,5 +32,9 @@ Once installed, you can interact with dot via `dot`. See `dot --help` to get sta
 See `shell/functions/` for the latest custom functions, all of which support `--help`. See `bashrc` for the repo entrypoint once installed. Third-party app-specific configurations live under `config/<app>/`.
 
 To have dot manage repositories on your local machine, add them to `repos.txt`. You can configure other local options in `~/.dotrc`, specifically:
-* `DOT_DIR` - the path to the local dot repository
-* `CODE_DIR` - the path to your code parent directory, in which repositories will be cloned and tracked
+- `DOT_DIR` - the path to the local dot repository
+- `CODE_DIR` - the path to your code parent directory, in which repositories will be cloned and tracked
+- `DOT_MACHINE_ROLE` - `workstation` (default when omitted) or `server`
+
+## Roles
+Dot can manage certain settings based on the desired _role_ for a machine. For instance, you may want a Mac mini to be a _server_ while a MacBook is a _workstation_. You can specify the machine role in your `~/.dotrc`, set or change it via `dot install -r ROLE`, and view it via `dot role [-v]`. Server roles by default do not sleep.
