@@ -213,7 +213,7 @@ log_app ghostty
 check_link "ghostty" "$CHECKOUT/config/ghostty/ghostty.ini" "$HOME/.config/ghostty/config"
 log_app_done
 log_app orca
-check_link "orca" "$CHECKOUT/config/orca/settings.json" "$HOME/.orca/settings.json"
+check_link "orca keybindings" "$CHECKOUT/config/orca/keybindings.json" "$HOME/.orca/keybindings.json"
 orca_plugin="$CHECKOUT/config/orca/plugins/bats-syntax"
 for orca_file in orca-plugin.json syntaxes/bats.tmLanguage.json; do
     case $orca_file in
@@ -242,14 +242,21 @@ if orca_available; then
     else
         warn "orca bats plugin validation unsupported"
     fi
-    if orca_plugins=$("$orca_cli" plugin list --json 2>/dev/null) && command -v jq >/dev/null 2>&1; then
+    if orca_plugins=$("$orca_cli" plugin list --json 2>/dev/null) &&
+        command -v jq >/dev/null 2>&1 &&
+        printf '%s' "$orca_plugins" | jq -e '.result.plugins | type == "array"' >/dev/null 2>&1; then
         if printf '%s' "$orca_plugins" | jq -e '.result.plugins[] | select(.pluginKey == "local.bats-syntax" and .isDev == true and .status == "idle" and .needsReconsent == false)' >/dev/null; then
             pass "orca bats plugin"
         else
             warn "orca bats plugin not ready"
         fi
+        if printf '%s' "$orca_plugins" | jq -e '.result.plugins[] | select(.pluginKey == "stablyai.orca-ayu-theme" and (.status == "idle" or .status == "running") and .needsReconsent == false)' >/dev/null; then
+            pass "orca ayu plugin"
+        else
+            warn "orca ayu plugin not ready"
+        fi
     else
-        warn "orca bats plugin state unavailable"
+        warn "orca plugin state unavailable"
     fi
 else
     warn "orca cli unavailable"

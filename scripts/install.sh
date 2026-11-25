@@ -248,24 +248,8 @@ link_one() {
     log_line "backed up $dest to $BACKUP_DIR/$base"
 }
 
-# keep Orca runtime state separate from tracked settings and plugin content
-setup_orca() {
-    orca_config_dir="$HOME/.orca"
-    if ! mkdir -p -- "$orca_config_dir"; then
-        log_err "could not create $orca_config_dir"
-        failed=1
-        return
-    fi
-    orca_replace=0
-    if [ -L "$orca_config_dir/settings.json" ] &&
-        [ "$(readlink "$orca_config_dir/settings.json")" = "$DOT_DIR/orca.json" ]; then
-        orca_replace=1
-    fi
-    link_one "$DOT_DIR/config/orca/settings.json" "$orca_config_dir/settings.json" "$orca_replace" orca/settings.json
-    if ! orca_available; then
-        log_warn "Orca CLI unavailable, skipping Bats plugin (re-run install when available)"
-        return
-    fi
+# set up Orca BATS integration
+setup_orca_bats() {
     if ! "$orca_cli" plugin validate "$DOT_DIR/config/orca/plugins/bats-syntax" --json >/dev/null 2>&1; then
         log_err "Orca Bats plugin validation failed"
         failed=1
@@ -291,6 +275,81 @@ setup_orca() {
     else
         log_warn "Orca Bats plugin unavailable, check Orca is running and Settings > Plugins is turned on, then re-run install"
     fi
+}
+
+# set up Orca Ayu plugin
+setup_orca_ayu() {
+    orca_ayu_key=stablyai.orca-ayu-theme
+    if ! command -v jq >/dev/null 2>&1 ||
+        ! orca_plugins=$("$orca_cli" plugin list --json 2>/dev/null) ||
+        ! orca_ayu_status=$(printf '%s' "$orca_plugins" | jq -er --arg key "$orca_ayu_key" '
+            .result.plugins
+            | select(type == "array")
+            | map(select(.pluginKey == $key))
+            | if length == 0 then "missing"
+              elif .[0].needsReconsent == false then .[0].status
+              else "needs approval"
+              end
+        '); then
+        log_warn "Orca Ayu plugin state unavailable, open Orca and re-run install"
+        return
+    fi
+
+    case $orca_ayu_status in
+        idle|running)
+            log_line "ok Orca Ayu plugin"
+            return
+            ;;
+        missing)
+            if "$orca_cli" plugin install "$orca_ayu_key" --catalog official --json >/dev/null 2>&1; then
+                log_line "installed Orca Ayu plugin"
+                return
+            fi
+            ;;
+        disabled)
+            if "$orca_cli" plugin enable "$orca_ayu_key" --json >/dev/null 2>&1; then
+                log_line "enabled Orca Ayu plugin"
+                return
+            fi
+            ;;
+    esac
+    log_warn "Orca Ayu plugin not ready, check Settings > Plugins and re-run install"
+}
+
+# set up Orca IDE configuration
+setup_orca() {
+    orca_config_dir="$HOME/.orca"
+    if ! mkdir -p -- "$orca_config_dir"; then
+        log_err "could not create $orca_config_dir"
+        failed=1
+        return
+    fi
+    orca_keybindings="$orca_config_dir/keybindings.json"
+    orca_keybindings_src="$DOT_DIR/config/orca/keybindings.json"
+    link_one "$orca_keybindings_src" "$orca_keybindings" 0 orca/keybindings.json
+
+    orca_legacy_settings="$orca_config_dir/settings.json"
+    if [ -L "$orca_keybindings" ] &&
+        [ "$(readlink "$orca_keybindings" || true)" = "$orca_keybindings_src" ] &&
+        [ -L "$orca_legacy_settings" ]; then
+        case $(readlink "$orca_legacy_settings" || true) in
+            "$DOT_DIR/orca.json"|"$DOT_DIR/config/orca/settings.json")
+                if rm -- "$orca_legacy_settings"; then
+                    log_line "removed legacy Orca keybindings link $orca_legacy_settings"
+                else
+                    log_err "could not remove legacy Orca keybindings link $orca_legacy_settings"
+                    failed=1
+                fi
+                ;;
+        esac
+    fi
+
+    if ! orca_available; then
+        log_warn "Orca CLI unavailable, skipping Bats and Ayu plugins. Open Orca and re-run install when the CLI is available."
+        return
+    fi
+    setup_orca_bats
+    setup_orca_ayu
 }
 
 setup_skills() {
